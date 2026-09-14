@@ -1,0 +1,51 @@
+PLANT DISEASE DETECTION CLASSIFICATION REPORT
+======================================================================
+
+Test Images: 8266
+Number of Classes: 38
+Test Accuracy: 63.98%
+
+                                                    precision    recall  f1-score   support
+
+                                Apple___Apple_scab     0.6701    0.6373    0.6533       102
+                                 Apple___Black_rot     0.5221    0.5900    0.5540       100
+                          Apple___Cedar_apple_rust     0.7895    0.6818    0.7317        44
+                                   Apple___healthy     0.3874    0.8704    0.5362       247
+                               Blueberry___healthy     0.4364    0.9364    0.5954       220
+          Cherry_(including_sour)___Powdery_mildew     0.9101    0.5625    0.6953       144
+                 Cherry_(including_sour)___healthy     0.6026    1.0000    0.7520       138
+Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot     0.5385    0.7975    0.6429        79
+                       Corn_(maize)___Common_rust_     0.8645    0.9788    0.9181       189
+               Corn_(maize)___Northern_Leaf_Blight     0.9200    0.5714    0.7050       161
+                            Corn_(maize)___healthy     0.9389    0.9941    0.9657       170
+                                 Grape___Black_rot     0.7400    0.2056    0.3217       180
+                      Grape___Esca_(Black_Measles)     0.8662    0.5913    0.7029       208
+        Grape___Leaf_blight_(Isariopsis_Leaf_Spot)     0.8409    0.9024    0.8706       164
+                                   Grape___healthy     0.5714    0.9730    0.7200        74
+          Orange___Haunglongbing_(Citrus_greening)     0.9763    0.5374    0.6932       843
+                            Peach___Bacterial_spot     0.9932    0.7913    0.8808       369
+                                   Peach___healthy     0.6316    0.8727    0.7328        55
+                     Pepper,_bell___Bacterial_spot     0.4146    0.4474    0.4304       152
+                            Pepper,_bell___healthy     0.4518    0.9462    0.6116       223
+                             Potato___Early_blight     0.4982    0.8947    0.6400       152
+                              Potato___Late_blight     1.0000    0.0066    0.0131       152
+                                  Potato___healthy     0.0000    0.0000    0.0000        24
+                               Raspberry___healthy     0.8750    0.4667    0.6087        75
+                                 Soybean___healthy     0.7020    0.9624    0.8118       771
+                           Squash___Powdery_mildew     0.7900    0.9299    0.8542       271
+                          Strawberry___Leaf_scorch     0.6103    0.9725    0.7500       182
+                              Strawberry___healthy     0.6667    0.9167    0.7719        72
+                           Tomato___Bacterial_spot     0.4103    0.0500    0.0891       320
+                             Tomato___Early_blight     0.2143    0.1184    0.1525       152
+                              Tomato___Late_blight     0.4651    0.7690    0.5796       277
+                                Tomato___Leaf_Mold     1.0000    0.0069    0.0138       144
+                       Tomato___Septoria_leaf_spot     0.3804    0.6374    0.4765       262
+     Tomato___Spider_mites Two-spotted_spider_mite     0.8000    0.0476    0.0899       252
+                              Tomato___Target_Spot     0.2125    0.2308    0.2213       221
+            Tomato___Tomato_Yellow_Leaf_Curl_Virus     0.9961    0.6454    0.7833       798
+                      Tomato___Tomato_mosaic_virus     1.0000    0.3265    0.4923        49
+                                  Tomato___healthy     0.5395    0.5043    0.5213       230
+
+                                          accuracy                         0.6398      8266
+                                         macro avg     0.6639    0.6151    0.5680      8266
+                                      weighted avg     0.7158    0.6398    0.6109      8266

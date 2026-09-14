@@ -1,0 +1,38 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+
+# Prediction history / user-generated data
+prediction_history.csv
+
+# Large / experimental model files
+models/best_plant_disease_model.keras
+models/plant_disease_model_v2.keras
+models/plant_disease_v2_best.keras
+models/plant_disease_v2_phase1_best.keras
+models/plant_disease_v3_phase1_best.keras
+
+# Experimental V2/V3 outputs
+output/model_info_v2.json
+output/training_history_v2.json
+
+# OS files
+.DS_Store
+Thumbs.db

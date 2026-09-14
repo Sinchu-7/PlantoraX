@@ -1,0 +1,36 @@
+PLANT DISEASE DETECTION MODEL EVALUATION SUMMARY
+======================================================================
+
+Number of test images: 8266
+Number of classes: 38
+Test accuracy: 63.98%
+Wrong predictions: 2977
+Low-confidence predictions (<60%): 1953
+
+BEST PERFORMING CLASSES
+----------------------------------------------------------------------
+                                            precision    recall  f1-score  support
+Corn_(maize)___healthy                       0.938889  0.994118  0.965714    170.0
+Corn_(maize)___Common_rust_                  0.864486  0.978836  0.918114    189.0
+Peach___Bacterial_spot                       0.993197  0.791328  0.880845    369.0
+Grape___Leaf_blight_(Isariopsis_Leaf_Spot)   0.840909  0.902439  0.870588    164.0
+Squash___Powdery_mildew                      0.789969  0.929889  0.854237    271.0
+Soybean___healthy                            0.701987  0.962387  0.811816    771.0
+Tomato___Tomato_Yellow_Leaf_Curl_Virus       0.996132  0.645363  0.783270    798.0
+Strawberry___healthy                         0.666667  0.916667  0.771930     72.0
+Cherry_(including_sour)___healthy            0.602620  1.000000  0.752044    138.0
+Strawberry___Leaf_scorch                     0.610345  0.972527  0.750000    182.0
+
+WORST PERFORMING CLASSES
+----------------------------------------------------------------------
+                                               precision    recall  f1-score  support
+Potato___healthy                                0.000000  0.000000  0.000000     24.0
+Potato___Late_blight                            1.000000  0.006579  0.013072    152.0
+Tomato___Leaf_Mold                              1.000000  0.006944  0.013793    144.0
+Tomato___Bacterial_spot                         0.410256  0.050000  0.089136    320.0
+Tomato___Spider_mites Two-spotted_spider_mite   0.800000  0.047619  0.089888    252.0
+Tomato___Early_blight                           0.214286  0.118421  0.152542    152.0
+Tomato___Target_Spot                            0.212500  0.230769  0.221258    221.0
+Grape___Black_rot                               0.740000  0.205556  0.321739    180.0
+Pepper,_bell___Bacterial_spot                   0.414634  0.447368  0.430380    152.0
+Tomato___Septoria_leaf_spot                     0.380410  0.637405  0.476462    262.0

@@ -1,322 +1,796 @@
-# 🌿 Plant Disease Detection using Fine-tuned MobileNetV2
+# 🌿 Plant Disease Detection using MobileNetV2
 
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.15.0-orange.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.29.0-red.svg)
+![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.16.1-orange.svg)
+![Keras](https://img.shields.io/badge/Keras-3.1.1-red.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.29.0-ff4b4b.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-**An intelligent plant disease detection system using Fine-tuned MobileNetV2 on the PlantVillage dataset**
+**An AI-based plant disease detection system using MobileNetV2 Transfer Learning and the PlantVillage dataset.**
 
 </div>
 
 ---
 
-## 📌 Project Overview
+# 📌 Project Overview
 
-This project implements a **plant disease detection system** using **Deep Learning** and **Fine-tuning** techniques. By leveraging the pre-trained **MobileNetV2** model and fine-tuning it on the **PlantVillage** dataset, we have achieved a model with **90.44% accuracy** across 38 different plant disease classes.
+Plant diseases can significantly affect crop production and agricultural productivity. Early identification of plant diseases can help farmers take appropriate action before the disease spreads.
 
-### 🎯 Project Objectives
+This project presents a **Deep Learning based Plant Disease Detection System** that classifies plant leaf images into different disease and healthy categories.
 
-- Automated detection of plant diseases from leaf images
-- Utilizing Fine-tuning techniques to improve accuracy with limited computational resources
-- Providing a simple and user-friendly interface with Streamlit
-- Optimized for resource-constrained systems (RTX 2050, 8GB RAM)
+The system uses **MobileNetV2**, a lightweight Convolutional Neural Network architecture, with **Transfer Learning**. A Streamlit-based web application provides an easy-to-use interface where users can upload a leaf image and receive a predicted disease along with its confidence score and top-3 predictions.
 
----
-
-## ✨ Key Features
-
-- ✅ **Detects 38 types** of plant diseases with % accuracy
-- ✅ **Interactive UI** with Streamlit for image upload and diagnosis
-- ✅ **Confidence level display** and top-3 probabilities for transparency
-- ✅ **Optimized** for systems with 8GB RAM and mid-range GPUs
-- ✅ **Comprehensive evaluation** with Precision, Recall, and Confusion Matrix
-- ✅ **Error handling** and compatibility with different TensorFlow versions
+The final model supports **38 plant disease and healthy classes**.
 
 ---
 
-## 🏗️ Model Architecture
+# 🎯 Objectives
 
-### Overall Structure
+The main objectives of this project are:
 
-```
-Input (128×128×3)
-    ↓
-MobileNetV2 Base (Frozen - 155 layers)
-    ↓
+- To develop an automated plant disease classification system.
+- To use Deep Learning for image-based disease detection.
+- To apply Transfer Learning using MobileNetV2.
+- To classify plant leaves into 38 different classes.
+- To provide prediction confidence and top-3 predictions.
+- To develop a simple web interface using Streamlit.
+- To maintain prediction history.
+- To allow prediction history to be downloaded as CSV, Excel, and PDF.
+- To evaluate the trained model using Accuracy, Precision, Recall, F1-score, and Confusion Matrix.
+
+---
+
+# ✨ Key Features
+
+## 🌿 Disease Detection
+
+Upload a plant leaf image and obtain the predicted disease or healthy class.
+
+## 📊 Confidence Score
+
+The application displays the confidence score of the predicted class.
+
+## 🔝 Top-3 Predictions
+
+The system displays the three most probable disease classes.
+
+## 📋 Prediction History
+
+Previous predictions are stored with:
+
+- Date and time
+- Username
+- Image filename
+- Predicted disease
+- Confidence
+- Confidence level
+
+## 📥 Download Reports
+
+Prediction history can be downloaded as:
+
+- CSV
+- Excel
+- PDF
+
+## 👤 User Login
+
+The application provides a simple login and account creation system.
+
+## 👤 User Profile
+
+Users can maintain:
+
+- Name
+- Gmail
+- Phone number
+- Profile photo
+
+## 📈 Model Evaluation
+
+The application displays:
+
+- Accuracy
+- Precision
+- Recall
+- F1-score
+- Confusion Matrix
+
+---
+
+# 🏗️ System Architecture
+
+The overall workflow of the system is:
+
+```text
+                 Plant Leaf Image
+                        │
+                        ▼
+               Image Preprocessing
+                        │
+                        ▼
+                 Resize to 128×128
+                        │
+                        ▼
+              MobileNetV2 Backbone
+                  ImageNet Weights
+                        │
+                        ▼
+             Global Average Pooling
+                        │
+                        ▼
+                    Dropout
+                     (0.30)
+                        │
+                        ▼
+                  Dense Layer
+                  256 Neurons
+                     ReLU
+                        │
+                        ▼
+                    Dropout
+                     (0.30)
+                        │
+                        ▼
+              Dense Layer - 38
+                   Softmax
+                        │
+                        ▼
+              Disease Prediction
+                        │
+             ┌──────────┴──────────┐
+             ▼                     ▼
+       Confidence Score       Top-3 Predictions
+             │
+             ▼
+       Save Prediction History
+
+       🧠 Model Architecture
+
+The project uses MobileNetV2 as the main Convolutional Neural Network (CNN) backbone.
+
+MobileNetV2 was selected because it is a lightweight and efficient architecture suitable for image classification while requiring fewer computational resources compared with larger CNN architectures.
+
+The final model architecture consists of:
+
+Input Image
+   │
+   ▼
+128 × 128 × 3
+   │
+   ▼
+MobileNetV2
+ImageNet Pre-trained Weights
+   │
+   ▼
 GlobalAveragePooling2D
-    ↓
-Dropout (30%)
-    ↓
-Dense (128, ReLU)
-    ↓
-Dropout (20%)
-    ↓
-Dense (38, Softmax) ← Final Output
-```
+   │
+   ▼
+Dropout (0.30)
+   │
+   ▼
+Dense Layer (256 neurons)
+ReLU Activation
+   │
+   ▼
+Dropout (0.30)
+   │
+   ▼
+Dense Layer (38 neurons)
+Softmax Activation
+   │
+   ▼
+Predicted Plant Disease Class
 
-### Model Specifications
+Model Components
 
-| Parameter | Value |
-| :--- | :--- |
-| **Base Architecture** | MobileNetV2 (ImageNet weights) |
-| **Number of Classes** | 38 plant disease classes |
-| **Input Size** | 128×128 pixels (RGB) |
-| **Total Parameters** | 2,426,854 |
-| **Trainable Parameters** | 168,870 |
-| **Frozen Parameters** | 2,257,984 |
-| **Model Size** | ~9.26 MB |
+| Component           | Description            |
+| ------------------- | ---------------------- |
+| Input Size          | 128 × 128 × 3          |
+| Backbone            | MobileNetV2            |
+| Pre-trained Weights | ImageNet               |
+| Pooling             | Global Average Pooling |
+| Dropout             | 0.30                   |
+| Dense Layer         | 256 neurons            |
+| Activation          | ReLU                   |
+| Output Layer        | 38 neurons             |
+| Output Activation   | Softmax                |
 
-### Added Layers
 
-1. **GlobalAveragePooling2D**: Reduces MobileNetV2 output dimensions
-2. **Dropout(0.3)**: Prevents Overfitting
-3. **Dense(128, ReLU)**: High-level feature extraction
-4. **Dropout(0.2)**: Second Dropout layer
-5. **Dense(38, Softmax)**: Final classification layer
+🔄 Transfer Learning
 
----
+Transfer Learning is used to utilize the knowledge learned by MobileNetV2 from the ImageNet dataset.
 
-## 📊 Evaluation Results
+The model was trained in two phases.
 
-### Performance on Test Dataset
+Phase 1 — Feature Extraction
 
-| Metric | Value | Interpretation |
-| :--- | :--- | :--- |
-| **Accuracy** | **%** | 90 out of 100 images correctly classified |
-| **Precision** | **93.26%** | When the model says it's disease X, 93% of the time it's correct |
-| **Recall** | **87.67%** | Out of all actual disease X cases, 87.7% were detected |
+In the first phase, the pre-trained MobileNetV2 backbone was frozen.
 
-### Dataset Statistics
+Only the newly added classification layers were trained to learn features specific to plant disease classification.
 
-| Split | Number of Images | Percentage |
-| :--- | :--- | :--- |
-| **Train** | 37,997 | ~70% |
-| **Validation** | 10,859 | ~20% |
-| **Test** | 5,449 | ~10% |
-| **Total** | 54,305 | 100% |
+Phase 2 — Fine-Tuning
 
-### Results Analysis
+In the second phase, selected deeper layers of MobileNetV2 were unfrozen and fine-tuned using a smaller learning rate.
 
-- **Precision > Recall** (93.38% vs 87.72%): The model **makes fewer false positives** (when it says a disease is present, it's usually correct), but it may **miss some disease cases** (false negatives). This is acceptable for a diagnostic system, as it's better to occasionally miss a disease than to incorrectly diagnose a healthy plant.
+This allowed the model to adapt the pre-trained ImageNet features to the PlantVillage plant disease dataset.
 
----
+The use of Transfer Learning reduces training time and allows the model to utilize useful visual features learned from a large-scale dataset.
 
-## 📁 Project Structure
+🖼️ Data Preprocessing
 
-```
+Before an image is passed to the model, it goes through the following preprocessing steps:
+
+The uploaded image is loaded.
+The image is converted into RGB format.
+The image is resized to 128 × 128 pixels.
+MobileNetV2 preprocessing is applied.
+The processed image is passed to the trained model.
+Data Augmentation
+
+Data augmentation was applied during training to improve the model's ability to generalize to different leaf images.
+
+The following augmentation techniques were used:
+
+Random horizontal flipping
+Random rotation
+Random zoom
+Random contrast adjustment
+
+These transformations help the model handle variations in leaf orientation, position, and appearance
+
+📚 Dataset
+
+The project uses the PlantVillage dataset for training and evaluating the plant disease classification model.
+
+The dataset contains images of healthy and diseased plant leaves belonging to 38 different classes.
+
+Dataset Statistics
+
+| Dataset        | Number of Images |
+| -------------- | ---------------: |
+| Training Set   |           37,847 |
+| Validation Set |            8,192 |
+| Test Set       |            8,266 |
+| **Total**      |       **54,305** |
+
+
+Dataset Classes
+
+The dataset contains 38 plant disease and healthy categories covering multiple plant species, including:
+
+Apple
+Blueberry
+Cherry
+Corn
+Grape
+Orange
+Peach
+Pepper
+Potato
+Raspberry
+Soybean
+Squash
+Strawberry
+Tomato
+
+Both healthy and diseased leaf categories are included.
+
+🔀 Dataset Split
+
+The complete dataset was divided into three subsets:
+
+Training Set
+
+37,847 images
+
+Used to train the MobileNetV2-based model.
+
+Validation Set
+
+8,192 images
+
+Used during training to monitor model performance and select the best model.
+
+Test Set
+
+8,266 images
+
+Used for the final evaluation of the trained model on unseen images.
+
+Dataset Distribution
+
+                 PlantVillage Dataset
+                       54,305
+                          │
+            ┌─────────────┼─────────────┐
+            ▼             ▼             ▼
+        Training      Validation       Test
+         37,847          8,192         8,266
+
+The dataset split was performed before model training so that the test set remained separate from the training process.
+
+
+⚙️ Model Training
+
+The MobileNetV2-based model was trained using a two-phase transfer learning strategy.
+
+Phase 1 — Training the Classification Head
+
+In the first phase, the MobileNetV2 base model was kept frozen.
+
+The newly added classification layers were trained using:
+
+Optimizer: Adam
+Learning Rate: 0.001
+Maximum Epochs: 15
+Loss Function: Categorical Cross-Entropy
+Output Activation: Softmax
+Class Weighting: Balanced Class Weights
+
+The best validation accuracy achieved during Phase 1 was approximately 54.64%.
+
+Phase 2 — Fine-Tuning
+
+In the second phase, selected deeper layers of MobileNetV2 were unfrozen.
+
+A smaller learning rate was used to make gradual adjustments to the pre-trained weights.
+
+The configuration included:
+
+Optimizer: Adam
+Learning Rate: 0.00001
+Maximum Epochs: 15
+Selected deeper MobileNetV2 layers fine-tuned
+Batch Normalization layers kept frozen
+
+The best validation accuracy achieved during Phase 2 was approximately 62.49%.
+
+🛠️ Training Callbacks
+
+The following callbacks were used during training:
+
+Model Checkpoint
+
+Saves the model with the best validation performance.
+
+Early Stopping
+
+Stops training when validation performance stops improving for several epochs.
+
+Reduce Learning Rate on Plateau
+
+Reduces the learning rate when validation performance stops improving.
+
+These techniques help improve training stability and prevent unnecessary training.
+
+📊 Training Performance
+
+The training process showed improvement after fine-tuning the MobileNetV2 backbone.
+
+| Training Phase | Best Validation Accuracy |
+| -------------- | -----------------------: |
+| Phase 1        |                   54.64% |
+| Phase 2        |                   62.49% |
+
+The model showed improved validation performance after fine-tuning compared with the initial feature-extraction phase.
+
+📊 Model Evaluation & Results
+
+The final trained model was evaluated using the separate test dataset containing 8,266 images.
+
+The following evaluation metrics were used:
+
+Accuracy
+Precision
+Recall
+F1-score
+Confusion Matrix
+
+📈 Overall Performance
+
+| Metric             |      Score |
+| ------------------ | ---------: |
+| Test Accuracy      | **63.98%** |
+| Weighted Precision | **71.58%** |
+| Weighted Recall    | **63.98%** |
+| Weighted F1-score  | **61.09%** |
+| Macro Precision    | **66.39%** |
+| Macro Recall       | **61.51%** |
+| Macro F1-score     | **56.80%** |
+
+The final model achieved an overall test accuracy of 63.98% across 38 plant disease and healthy classes.
+
+🔲 Confusion Matrix
+
+A confusion matrix was generated to analyze the classification performance across all 38 classes.
+
+It helps identify which plant disease classes are correctly classified and which classes are frequently confused with one another.
+
+🔍 Class-wise Performance
+
+The model performed particularly well on several classes.
+
+Some of the stronger-performing classes include:
+
+| Plant Disease / Class   | F1-score |
+| ----------------------- | -------: |
+| Corn - Healthy          |   96.57% |
+| Corn - Common Rust      |   91.81% |
+| Peach - Bacterial Spot  |   88.08% |
+| Grape - Leaf Blight     |   87.06% |
+| Squash - Powdery Mildew |   85.42% |
+| Soybean - Healthy       |   81.18% |
+
+Performance varied across different disease categories. Some visually similar classes were more difficult for the model to distinguish.
+
+⚠️ Model Limitations
+
+The evaluation showed weaker performance for some visually similar disease categories.
+
+Examples include:
+
+Potato - Healthy
+Potato - Late Blight
+Tomato - Leaf Mold
+Tomato - Bacterial Spot
+Tomato - Spider Mites
+Tomato - Early Blight
+
+These results indicate that visually similar disease patterns can be challenging for the model to distinguish.
+
+The model should therefore be considered a prototype plant disease classification system and not a replacement for expert agricultural diagnosis.
+
+🌐 Streamlit Web Application
+
+A web-based interface was developed using Streamlit to make the plant disease detection system easy to use.
+
+The application allows users to interact with the trained Deep Learning model without requiring them to write Python code.
+
+🏠 Home
+
+The Home page provides an overview of the system and displays important model information such as:
+
+Number of supported classes
+Test dataset size
+Model accuracy
+Deep Learning architecture used
+🔐 User Login & Registration
+
+The application provides a simple user authentication interface.
+
+Users can:
+
+Login using an existing account.
+Create a new account.
+Logout from the application.
+👤 User Profile
+
+Users can maintain their basic profile information, including:
+
+Name
+Gmail
+Phone number
+Profile photo
+🌿 Disease Detection
+
+The Disease Detection page allows users to upload a plant leaf image.
+
+The uploaded image is:
+
+Resized to 128 × 128 pixels.
+Preprocessed using MobileNetV2 preprocessing.
+Passed to the trained MobileNetV2 model.
+Classified into one of the 38 supported classes.
+
+The application displays:
+
+Uploaded leaf image
+Predicted disease
+Confidence score
+Confidence level
+Top-3 predictions
+🔝 Top-3 Predictions
+
+Instead of displaying only the highest prediction, the application also shows the three most probable classes.
+
+This provides additional information when multiple classes have similar prediction probabilities.
+
+📋 Prediction History
+
+Every prediction made through the application can be recorded in the prediction history.
+The history contains:
+
+| Field            | Description                  |
+| ---------------- | ---------------------------- |
+| Date             | Date and time of prediction  |
+| Username         | User who made the prediction |
+| Image            | Uploaded image filename      |
+| Prediction       | Predicted disease/class      |
+| Confidence       | Prediction probability       |
+| Confidence Level | High, Medium, or Low         |
+
+
+Low
+📥 Report Downloads
+
+Prediction history can be downloaded in multiple formats:
+
+CSV
+
+Useful for storing and analyzing prediction records.
+
+Excel
+
+Useful for viewing and organizing prediction history in spreadsheet format.
+
+PDF
+
+Provides a formatted report of prediction records.
+
+📈 Model Evaluation
+
+The application contains a Model Evaluation page where users can view:
+
+Test Accuracy
+Weighted Precision
+Weighted Recall
+Weighted F1-score
+Macro Precision
+Macro Recall
+Macro F1-score
+Confusion Matrix
+
+🖥️ Application Workflow
+
+              User Login
+                  │
+                  ▼
+             Home Page
+                  │
+                  ▼
+          Disease Detection
+                  │
+                  ▼
+          Upload Leaf Image
+                  │
+                  ▼
+         Image Preprocessing
+                  │
+                  ▼
+          MobileNetV2 Model
+                  │
+                  ▼
+          Disease Prediction
+                  │
+          ┌───────┴────────┐
+          ▼                ▼
+   Confidence Score    Top-3 Results
+          │                │
+          └───────┬────────┘
+                  ▼
+          Prediction History
+                  │
+          ┌───────┼────────┐
+          ▼       ▼        ▼
+         CSV    Excel     PDF
+
+📁 Project Structure
+
 Plant-Disease-Detection/
 │
-├── main.ipynb                     # Model training code
-├── app.py                       # Streamlit UI application
-├── requirements.txt             # Dependencies list
+├── app.py
 │
-├── Dataset/                     # PlantVillage dataset
-│   ├── train/                   # 37,997 images
-│   ├── validation/              # 10,859 images
-│   └── test/                    # 5,449 images
+├── models/
+│   └── plant_disease_model.keras
 │
-├── models/                      # Saved models
-│   ├── plant_disease_model.keras
-│   ├── plant_disease_model.h5
-│   ├── model_architecture.json
-│   └── saved_model/
-│
-├── outputs/                     # Generated outputs
-│   ├── confusion_matrix.png
+├── output/
 │   ├── class_names.json
-│   └── model_info.json
+│   └── confusion_matrix.png
 │
-└── README.md                    # Project documentation
-```
+├── data/
+│   ├── reports/
+│   │   └── PlantVillage dataset reports
+│   │
+│   ├── splits/
+│   │   ├── train.csv
+│   │   ├── validation.csv
+│   │   ├── test.csv
+│   │   └── class_names.txt
+│   │
+│   └── plantvillage_leaf_mapping.csv
+│
+├── prediction_history.csv
+│
+├── requirements.txt
+│
+└── README.md
 
----
+📌 Important Files
 
-## 🚀 Installation and Setup
+| File / Folder               | Purpose                                          |
+| --------------------------- | ------------------------------------------------ |
+| `app.py`                    | Main Streamlit web application                   |
+| `models/`                   | Stores the trained MobileNetV2 model             |
+| `plant_disease_model.keras` | Final trained model                              |
+| `output/`                   | Stores evaluation outputs and class information  |
+| `class_names.json`          | Contains the 38 class names                      |
+| `confusion_matrix.png`      | Model confusion matrix                           |
+| `data/`                     | Dataset-related files                            |
+| `data/splits/`              | Training, validation, and test split information |
+| `prediction_history.csv`    | Stores prediction history                        |
+| `requirements.txt`          | Python dependencies                              |
+| `README.md`                 | Project documentation                            |
 
-### Prerequisites
 
-- Python 3.8+
-- pip
-- (Optional) GPU with CUDA support
+🚀 Installation & Usage
+1️⃣ Clone the Repository
 
-### Installation Steps
-
-1. **Clone the repository**
-
-```bash
-git clone https://github.com/your-username/Plant-Disease-Detection.git
+Clone the project repository using Git:
+git clone https://github.com/Sajjadde/Plant-Disease-Detection.git
 cd Plant-Disease-Detection
-```
 
-2. **Install dependencies**
+2️⃣ Create a Virtual Environment
 
-```bash
+It is recommended to use a Python virtual environment.
+python -m venv venv
+
+Windows
+
+Activate the virtual environment using:
+venv\Scripts\activate
+
+3️⃣ Install Dependencies
+
+Install the required Python packages:
 pip install -r requirements.txt
-```
 
-3. **Download the dataset**
-   - Download PlantVillage dataset from [Kaggle](https://www.kaggle.com/datasets/moazeldsokyx/plantvillage)
-   - Or from [GitHub](https://github.com/spMohanty/PlantVillage-Dataset)
-   - Place the `train`, `validation`, and `test` folders in the `Dataset/` directory
+The main technologies used in the project include:
 
-4. **Train the model**
+Python 3.11
+TensorFlow 2.16.1
+Keras 3.1.1
+Streamlit 1.29.0
+NumPy
+Pandas
+Pillow
+OpenCV
+ReportLab
+OpenPyXL
+4️⃣ Run the Streamlit Application
 
-```bash
-python train.py
-```
-
-5. **Run the web interface**
-
-```bash
+Start the application using:
 streamlit run app.py
-```
 
----
+After starting the application, Streamlit will provide a local URL.
 
-## 📖 Usage Guide
+Open the displayed URL in a web browser to access the Plant Disease Detection System.
 
-### Using the Streamlit Web Interface
 
-1. **Launch the application**
+.
 
-```bash
-streamlit run app.py
-```
+🧪 Using the Application
+Step 1 — Login
 
-2. **Upload an image**
-   - Click on the **Browse files** button
-   - Select a leaf image (supported formats: JPG, JPEG, PNG)
+Login using an existing account or create a new account.
 
-3. **Diagnose the disease**
-   - Click on the **🔍 Diagnose Disease** button
-   - Results will display: disease name, confidence percentage, and top-3 probabilities
+Step 2 — Open Disease Detection
 
-### Using Command Line
+Navigate to Disease Detection from the sidebar.
 
-```python
-from tensorflow.keras.models import load_model
-import numpy as np
-from PIL import Image
+Step 3 — Upload an Image
 
-# Load the model
-model = load_model('plant_disease_model.keras')
+Upload an image of a plant leaf.
 
-# Preprocess the image
-img = Image.open('leaf.jpg').resize((128, 128))
-img_array = np.array(img) / 255.0
-img_array = np.expand_dims(img_array, axis=0)
+Step 4 — Generate Prediction
 
-# Make prediction
-predictions = model.predict(img_array)
-predicted_class = np.argmax(predictions[0])
-confidence = np.max(predictions[0])
-```
+The trained MobileNetV2 model processes the image and predicts the most likely plant disease or healthy class.
 
----
+Step 5 — View Results
 
-## 🧠 Technologies Used
+The application displays:
 
-### MobileNetV2
+Predicted class
+Confidence score
+Confidence level
+Top-3 predictions
+Step 6 — View History
 
-MobileNetV2 is a **lightweight and efficient** convolutional neural network architecture introduced by Google in 2018. Key features include:
+Previous predictions can be viewed in Prediction History.
 
-- **Depthwise Separable Convolution**: Reduces parameters by 8-9x
-- **Inverted Residuals**: Inverted residual blocks for better information flow
-- **Linear Bottlenecks**: Removes non-linearities in low-dimensional layers
+Step 7 — Download Reports
 
-With **3.5 million parameters** and **71.86% accuracy** on ImageNet, it offers an excellent balance between speed and accuracy.
+Prediction history can be downloaded as:
 
-### Transfer Learning and Fine-tuning
+CSV
+Excel
+PDF
+Step 8 — Evaluate the Model
 
-**Fine-tuning** is a transfer learning method where a pre-trained model (trained on ImageNet with 14 million images) is adapted for a specific task. In this project, the base MobileNetV2 layers are frozen, and only the newly added layers (Dense, Dropout) are trained.
+The Model Evaluation section displays the model performance metrics and confusion matrix.
 
-### Streamlit
+⚠️ Limitations
 
-Streamlit is an open-source framework for building data applications quickly with Python. Key features:
+The current system has several limitations:
 
-- **Converts Python scripts to web apps** in minutes
-- **Built-in caching** for performance optimization
-- **Free deployment** on Streamlit Community Cloud
+The model achieves 63.98% test accuracy, so incorrect predictions can occur.
+Some visually similar diseases are difficult to distinguish.
+The model was trained using the PlantVillage dataset, which may not represent all real-world field conditions.
+Image quality, lighting, background, leaf orientation, and camera quality may affect prediction performance.
+The system should not be considered a substitute for professional agricultural diagnosis.
+The current application is designed primarily as a prototype and academic project.
 
----
+🔮 Future Scope
 
-## 📚 References
+The system can be improved further through:
 
-### Scientific Papers
+Training with larger and more diverse real-world datasets.
+Increasing image resolution.
+Experimenting with stronger CNN architectures such as EfficientNet.
+Using ensemble learning to improve classification performance.
+Improving performance on visually similar disease classes.
+Adding real-time camera-based disease detection.
+Deploying the application on a cloud platform.
+Adding multilingual support.
+Adding explainable AI techniques such as Grad-CAM.
+Developing a mobile application for field-level disease detection.
+Integrating additional agricultural information such as disease descriptions and prevention guidelines
 
-1. **MobileNetV2 Paper**
-   > Sandler, M., Howard, A., Zhu, M., Zhmoginov, A., & Chen, L. C. (2018). MobileNetV2: Inverted residuals and linear bottlenecks. In *Proceedings of the IEEE conference on computer vision and pattern recognition* (pp. 4510–4520).
 
-2. **PlantVillage Dataset**
-   > Hughes, D. P., & Salathé, M. (2015). An open access repository of images on plant health to enable the development of mobile disease diagnostics through machine learning and crowdsourcing. *arXiv preprint arXiv:1511.08060*.
+🛠️ Technologies Used
 
-3. **Mohanty et al. (2016)**
-   > Mohanty, S. P., Hughes, D. P., & Salathé, M. (2016). Using deep learning for image-based plant disease detection. *Frontiers in plant science*, 7, 1419.
+| Technology   | Purpose                 |
+| ------------ | ----------------------- |
+| Python       | Programming language    |
+| TensorFlow   | Deep Learning framework |
+| Keras        | Model development       |
+| MobileNetV2  | CNN architecture        |
+| NumPy        | Numerical computation   |
+| Pandas       | Data processing         |
+| Pillow       | Image processing        |
+| OpenCV       | Computer vision         |
+| Streamlit    | Web application         |
+| ReportLab    | PDF report generation   |
+| OpenPyXL     | Excel report generation |
+| PlantVillage | Dataset                 |
 
-### Documentation
 
-- [TensorFlow Documentation](https://www.tensorflow.org/)
-- [Streamlit Documentation](https://docs.streamlit.io/)
-- [Keras Documentation](https://keras.io/)
-- [Hugging Face Datasets](https://huggingface.co/docs/datasets/index)
+📚 References
+PlantVillage Dataset
+https://github.com/spMohanty/PlantVillage-Dataset
+MobileNetV2
+Sandler, M., Howard, A., Zhu, M., Zhmoginov, A., & Chen, L.-C.
+"MobileNetV2: Inverted Residuals and Linear Bottlenecks."
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2018.
+TensorFlow Documentation
+https://www.tensorflow.org/
+Keras Documentation
+https://keras.io/
+Streamlit Documentation
+https://docs.streamlit.io/
 
-### Datasets
 
-- [PlantVillage Dataset on GitHub](https://github.com/spMohanty/PlantVillage-Dataset)
-- [PlantVillage on Kaggle](https://www.kaggle.com/datasets/moazeldsokyx/plantvillage)
+📄 License
 
----
+This project is released under the MIT License.
 
-## 📝 Citation
 
-If you use this project in your research, please cite it as:
+👨‍💻 Project Summary
 
-```bibtex
-@software{plant_disease_detection_2026,
-  author = {sajjadde},
-  title = {Plant Disease Detection using Fine-tuned MobileNetV2},
-  year = {2026},
-  url = {https://github.com/your-username/Plant-Disease-Detection}
-}
-```
+Plant Disease Detection using MobileNetV2 is a Deep Learning-based image classification system designed to identify plant diseases from leaf images.
 
----
+The project combines:
 
-## 🤝 Contributing
+PlantVillage Dataset + MobileNetV2 + Transfer Learning + Streamlit
 
-Contributions are always welcome! Please follow these steps:
+to provide an interactive plant disease detection application with prediction confidence, top-3 predictions, prediction history, downloadable reports, and model evaluation.
 
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+The final trained model achieved:
 
----
+63.98% Test Accuracy
 
-## 📄 License
+across 38 plant disease and healthy classes.
 
-This project is licensed under the **MIT License** - see the `LICENSE` file for details.
 
----
-
-## 👨‍💻 Developer
-
-- **Your Name** - [GitHub](https://github.com/sajjadde)
-
----
-
-## ⭐ Support
-
-If you find this project useful, please give it a ⭐! 🌟
-
----
-
-<div align="center">
-
-**Built with ❤️ using TensorFlow and Streamlit**
-
-</div>
