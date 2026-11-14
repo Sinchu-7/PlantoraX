@@ -4,13 +4,28 @@ import numpy as np
 import os
 import json
 import csv
-import hashlib
 import hmac
 from pathlib import Path
-from datetime import datetime
 from io import BytesIO
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
+from plant_app_utils import (
+    create_history_record,
+    deduplicate_history_records,
+    decode_image_bytes,
+    dataframe_to_html,
+    escape_html_text,
+    escape_pdf_text,
+    get_model_image_size,
+    hash_password,
+    migrate_history_csv,
+    normalize_profile_photo,
+    sanitize_spreadsheet_dataframe,
+    validate_model_class_count,
+    validate_new_password,
+    validate_profile_fields,
+    verify_password,
+)
 
 try:
     from keras.models import load_model
@@ -124,16 +139,6 @@ if "profile" not in st.session_state:
         "phone": "",
         "photo": None
     }
-
-
-# ============================================================
-# PASSWORD HASH
-# ============================================================
-
-def hash_password(password):
-    return hashlib.sha256(
-        password.encode("utf-8")
-    ).hexdigest()
 
 
 # ============================================================
@@ -380,9 +385,9 @@ if not st.session_state.logged_in:
             else:
                 authenticated = (
                     username in st.session_state.users
-                    and hmac.compare_digest(
-                        st.session_state.users.get(username, "").encode("utf-8"),
-                        hash_password(password).encode("utf-8")
+                    and verify_password(
+                        password,
+                        st.session_state.users.get(username, ""),
                     )
                 )
 
@@ -441,6 +446,7 @@ if not st.session_state.logged_in:
                 "Confirm Password",
                 type="password"
             )
+            st.caption("Use at least 12 characters for a new password.")
 
             col1, col2 = st.columns(2)
 
@@ -470,9 +476,13 @@ if not st.session_state.logged_in:
 
                     else:
 
-                        st.session_state.users[
-                            new_username
-                        ] = hash_password(
+                        try:
+                            validate_new_password(new_password)
+                        except ValueError as exc:
+                            st.error(str(exc))
+                            st.stop()
+
+                        st.session_state.users[new_username] = hash_password(
                             new_password
                         )
 
@@ -527,6 +537,8 @@ def load_plant_model():
                     iter(signature.structured_input_signature[1])
                 )
                 output_name = next(iter(signature.structured_outputs))
+                input_spec = signature.structured_input_signature[1][input_name]
+                output_spec = signature.structured_outputs[output_name]
 
                 class SavedModelPredictor:
                     def predict(self, images, verbose=0):
@@ -542,6 +554,8 @@ def load_plant_model():
                         return outputs[output_name].numpy()
 
                 predictor = SavedModelPredictor()
+                predictor.input_shape = tuple(input_spec.shape)
+                predictor.output_shape = tuple(output_spec.shape)
                 predictor._saved_model = saved_model
                 return predictor, None
             except Exception as saved_model_error:
@@ -673,24 +687,11 @@ def get_risk(confidence):
 
 
 def decode_uploaded_image(uploaded_file):
-    image_bytes = uploaded_file.getvalue()
-    if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
-        raise ValueError(
-            f"Image is too large. Maximum upload size is "
-            f"{MAX_IMAGE_SIZE_BYTES // (1024 * 1024)} MB."
-        )
-
-    try:
-        with Image.open(BytesIO(image_bytes)) as source:
-            if source.width * source.height > 25_000_000:
-                raise ValueError("Image dimensions are too large to process.")
-            source.verify()
-
-        with Image.open(BytesIO(image_bytes)) as source:
-            source.load()
-            return source.convert("RGB")
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise ValueError(f"Could not read the uploaded image: {exc}") from exc
+    return decode_image_bytes(
+        uploaded_file.getvalue(),
+        max_size_bytes=MAX_IMAGE_SIZE_BYTES,
+        max_pixels=25_000_000,
+    )
 
 
 # ============================================================
@@ -705,16 +706,13 @@ def save_prediction(
     risk
 ):
 
-    record = {
-        "Date": datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-        "Username": username,
-        "Image": filename,
-        "Prediction": prediction,
-        "Confidence": f"{confidence:.2f}%",
-        "Risk": risk
-    }
+    record = create_history_record(
+        username,
+        filename,
+        prediction,
+        confidence,
+        risk,
+    )
 
     # --------------------------------------------------------
     # SAVE IMMEDIATELY IN SESSION
@@ -730,7 +728,12 @@ def save_prediction(
 
     try:
         HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-        file_exists = os.path.exists(HISTORY_PATH)
+        file_exists = (
+            HISTORY_PATH.is_file()
+            and HISTORY_PATH.stat().st_size > 0
+        )
+        if file_exists:
+            migrate_history_csv(HISTORY_PATH)
 
         with open(
             HISTORY_PATH,
@@ -742,6 +745,7 @@ def save_prediction(
             writer = csv.DictWriter(
                 f,
                 fieldnames=[
+                    "Record ID",
                     "Date",
                     "Username",
                     "Image",
@@ -809,37 +813,8 @@ def read_history():
 
         return pd.DataFrame()
 
-    df = pd.DataFrame(
-        all_records
-    )
-
-    # --------------------------------------------------------
-    # REMOVE DUPLICATES
-    # --------------------------------------------------------
-
-    required_columns = [
-        "Date",
-        "Username",
-        "Image",
-        "Prediction",
-        "Confidence",
-        "Risk"
-    ]
-
-    existing_columns = [
-        col
-        for col in required_columns
-        if col in df.columns
-    ]
-
-    if existing_columns:
-
-        df = df.drop_duplicates(
-            subset=existing_columns,
-            keep="last"
-        )
-
-    return df
+    records = deduplicate_history_records(all_records)
+    return pd.DataFrame(records).drop(columns=["Record ID"], errors="ignore")
 
 
 # ============================================================
@@ -929,7 +904,7 @@ def create_pdf(df):
         table_data.append(
             [
                 Paragraph(
-                    str(column),
+                    escape_pdf_text(column),
                     body_style
                 )
                 for column in df.columns
@@ -943,7 +918,7 @@ def create_pdf(df):
             table_data.append(
                 [
                     Paragraph(
-                        str(value),
+                        escape_pdf_text(value),
                         body_style
                     )
                     for value in row.tolist()
@@ -1070,17 +1045,19 @@ with st.sidebar:
         )
 
     st.markdown(
-        f'<div class="profile-name">{profile["name"]}</div>',
+        f'<div class="profile-name">'
+        f'{escape_html_text(profile["name"])}</div>',
         unsafe_allow_html=True
     )
 
     st.markdown(
-        f'<div class="profile-email">📧 {profile["email"]}</div>',
+        f'<div class="profile-email">📧 '
+        f'{escape_html_text(profile["email"])}</div>',
         unsafe_allow_html=True
     )
 
     phone_display = (
-        profile["phone"]
+        escape_html_text(profile["phone"])
         if profile["phone"]
         else "Phone not added"
     )
@@ -1102,17 +1079,20 @@ with st.sidebar:
 
         profile_name = st.text_input(
             "Name",
-            value=profile["name"]
+            value=profile["name"],
+            max_chars=80,
         )
 
         profile_email = st.text_input(
             "Gmail",
-            value=profile["email"]
+            value=profile["email"],
+            max_chars=254,
         )
 
         profile_phone = st.text_input(
             "Phone Number",
-            value=profile["phone"]
+            value=profile["phone"],
+            max_chars=32,
         )
 
         uploaded_profile_photo = st.file_uploader(
@@ -1122,12 +1102,32 @@ with st.sidebar:
                 "jpeg",
                 "png"
             ],
-            key="profile_photo"
+            key="profile_photo",
         )
+        st.caption("Profile photos are limited to 5 MB and resized to 512 px.")
 
         if st.button(
             "💾 Save Profile"
         ):
+
+            try:
+                profile_name, profile_email, profile_phone = (
+                    validate_profile_fields(
+                        profile_name,
+                        profile_email,
+                        profile_phone,
+                    )
+                )
+                profile_photo = (
+                    normalize_profile_photo(
+                        uploaded_profile_photo.getvalue()
+                    )
+                    if uploaded_profile_photo
+                    else None
+                )
+            except ValueError as exc:
+                st.error(str(exc))
+                st.stop()
 
             st.session_state.profile[
                 "name"
@@ -1141,11 +1141,11 @@ with st.sidebar:
                 "phone"
             ] = profile_phone
 
-            if uploaded_profile_photo:
+            if profile_photo:
 
                 st.session_state.profile[
                     "photo"
-                ] = uploaded_profile_photo.getvalue()
+                ] = profile_photo
 
             st.success(
                 "Profile updated!"
@@ -1417,6 +1417,13 @@ elif page == "🌿 Disease Detection":
 
         st.stop()
 
+    try:
+        model_height, model_width = get_model_image_size(model)
+        validate_model_class_count(model, class_names)
+    except (TypeError, ValueError) as exc:
+        st.error(f"Model configuration is invalid: {exc}")
+        st.stop()
+
     uploaded_file = st.file_uploader(
         "Choose a plant image",
         type=[
@@ -1441,7 +1448,7 @@ elif page == "🌿 Disease Detection":
             st.image(
                 image,
                 caption="Uploaded Image",
-                width="stretch"
+                width=400
             )
 
         with col2:
@@ -1460,7 +1467,7 @@ elif page == "🌿 Disease Detection":
             )
 
             st.write(
-                "**Model Input:** 128 × 128"
+                f"**Model Input:** {model_width} × {model_height}"
             )
 
             st.write(
@@ -1483,7 +1490,7 @@ elif page == "🌿 Disease Detection":
                 # --------------------------------------------
 
                 resized_image = image.resize(
-                    (128, 128)
+                    (model_width, model_height)
                 )
 
                 image_array = np.array(
@@ -1851,10 +1858,9 @@ elif page == "📊 Prediction History":
                 "📋 Your Prediction Records"
             )
 
-            st.dataframe(
-                user_history,
-                use_container_width=True,
-                hide_index=True
+            st.markdown(
+                dataframe_to_html(user_history),
+                unsafe_allow_html=True,
             )
 
             st.write("")
@@ -1877,7 +1883,8 @@ elif page == "📊 Prediction History":
             # CSV
             # =================================================
 
-            csv_data = user_history.to_csv(
+            export_history = sanitize_spreadsheet_dataframe(user_history)
+            csv_data = export_history.to_csv(
                 index=False
             ).encode(
                 "utf-8"
@@ -1888,7 +1895,7 @@ elif page == "📊 Prediction History":
             # =================================================
 
             excel_buffer = create_excel(
-                user_history
+                export_history
             )
 
             # =================================================
@@ -2062,10 +2069,9 @@ elif page == "📈 Model Evaluation":
         ]
     })
 
-    st.dataframe(
-        model_info,
-        use_container_width=True,
-        hide_index=True
+    st.markdown(
+        dataframe_to_html(model_info),
+        unsafe_allow_html=True,
     )
 
     st.divider()
@@ -2083,7 +2089,7 @@ elif page == "📈 Model Evaluation":
         st.image(
             str(CONFUSION_MATRIX_PATH),
             caption="Test Set Confusion Matrix",
-            width="stretch"
+            width=700
         )
 
     else:
@@ -2146,10 +2152,9 @@ elif page == "ℹ️ About":
         ]
     })
 
-    st.dataframe(
-        technologies,
-        use_container_width=True,
-        hide_index=True
+    st.markdown(
+        dataframe_to_html(technologies),
+        unsafe_allow_html=True,
     )
 
     st.divider()
@@ -2209,10 +2214,9 @@ elif page == "ℹ️ About":
         ]
     })
 
-    st.dataframe(
-        performance,
-        use_container_width=True,
-        hide_index=True
+    st.markdown(
+        dataframe_to_html(performance),
+        unsafe_allow_html=True,
     )
 
     st.divider()

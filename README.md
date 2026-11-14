@@ -16,7 +16,16 @@ pip install -r requirements-dataset.txt
 python download_dataset.py
 ```
 
+### Run the tests
+
+```bash
+python -m unittest discover -s tests
+```
+
 The download is large (about 827 MB before export) and is saved under `data/plantvillage` by default. Dataset images and trained model files are intentionally ignored by Git and are not included in commits. To use the images, choose one of the exported files from `data/plantvillage/<class>/` in the app.
+The downloader can be safely re-run: valid exported images are skipped, and
+interrupted or corrupt image files are replaced. `--max-images` limits the
+number of new images written during that run.
 
 Use `python download_dataset.py --max-images 3` to verify the downloader on a small sample before exporting the full dataset.
 
@@ -25,6 +34,9 @@ Use `python download_dataset.py --max-images 3` to verify the downloader on a sm
 This repository is a Python/Streamlit application, not a static website. Netlify cannot run the Streamlit server, so its deploy-preview check is not a valid deployment target for this app. Use the included `render.yaml` blueprint to deploy the Dockerized app to Render, or connect the repository to Streamlit Community Cloud and set the main file to `app.py`.
 
 For Render, create a new Blueprint from this repository and set `PLANT_APP_USERNAME` and `PLANT_APP_PASSWORD` in the service environment before accessing the app. The blueprint enables production mode, uses the committed model files, and checks Streamlit's health endpoint. Choose a service plan with enough memory for TensorFlow and the model.
+The Docker build context excludes notebooks, training and evaluation artifacts,
+and legacy model archives; the runtime SavedModel and class labels remain
+included.
 
 ### Production configuration
 
@@ -107,6 +119,9 @@ Prediction history can be downloaded as:
 ## 👤 User Login
 
 The application provides a simple login and account creation system.
+Development accounts created in the app require passwords of at least 12
+characters; their passwords are stored as salted PBKDF2 hashes in session
+memory. Production mode continues to use the configured environment account.
 
 ## 👤 User Profile
 
