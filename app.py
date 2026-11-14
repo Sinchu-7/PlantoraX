@@ -7,11 +7,12 @@ import csv
 import hashlib
 import hmac
 from pathlib import Path
-from datetime import datetime
 from io import BytesIO
 
 from PIL import Image
 from plant_app_utils import (
+    create_history_record,
+    deduplicate_history_records,
     decode_image_bytes,
     get_model_image_size,
     validate_model_class_count,
@@ -701,16 +702,13 @@ def save_prediction(
     risk
 ):
 
-    record = {
-        "Date": datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-        "Username": username,
-        "Image": filename,
-        "Prediction": prediction,
-        "Confidence": f"{confidence:.2f}%",
-        "Risk": risk
-    }
+    record = create_history_record(
+        username,
+        filename,
+        prediction,
+        confidence,
+        risk,
+    )
 
     # --------------------------------------------------------
     # SAVE IMMEDIATELY IN SESSION
@@ -738,6 +736,7 @@ def save_prediction(
             writer = csv.DictWriter(
                 f,
                 fieldnames=[
+                    "Record ID",
                     "Date",
                     "Username",
                     "Image",
@@ -805,37 +804,8 @@ def read_history():
 
         return pd.DataFrame()
 
-    df = pd.DataFrame(
-        all_records
-    )
-
-    # --------------------------------------------------------
-    # REMOVE DUPLICATES
-    # --------------------------------------------------------
-
-    required_columns = [
-        "Date",
-        "Username",
-        "Image",
-        "Prediction",
-        "Confidence",
-        "Risk"
-    ]
-
-    existing_columns = [
-        col
-        for col in required_columns
-        if col in df.columns
-    ]
-
-    if existing_columns:
-
-        df = df.drop_duplicates(
-            subset=existing_columns,
-            keep="last"
-        )
-
-    return df
+    records = deduplicate_history_records(all_records)
+    return pd.DataFrame(records).drop(columns=["Record ID"], errors="ignore")
 
 
 # ============================================================

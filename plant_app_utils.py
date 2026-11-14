@@ -1,8 +1,65 @@
 """Small, testable helpers shared by the Streamlit application."""
 
 from io import BytesIO
+from datetime import datetime, timezone
+import math
+from uuid import uuid4
 
 from PIL import Image, UnidentifiedImageError
+
+
+HISTORY_DEDUPE_COLUMNS = (
+    "Date",
+    "Username",
+    "Image",
+    "Prediction",
+    "Confidence",
+    "Risk",
+)
+
+
+def create_history_record(username, filename, prediction, confidence, risk, now=None):
+    timestamp = now or datetime.now(timezone.utc)
+    if timestamp.tzinfo is None:
+        raise ValueError("History timestamps must include a timezone.")
+
+    return {
+        "Record ID": uuid4().hex,
+        "Date": timestamp.astimezone(timezone.utc).isoformat(timespec="seconds"),
+        "Username": username,
+        "Image": filename,
+        "Prediction": prediction,
+        "Confidence": f"{confidence:.2f}%",
+        "Risk": risk,
+    }
+
+
+def deduplicate_history_records(records):
+    unique_by_key = {}
+    ordered_keys = []
+
+    for record in records:
+        record_id = record.get("Record ID")
+        has_record_id = (
+            record_id is not None
+            and record_id != ""
+            and not (
+                isinstance(record_id, float)
+                and math.isnan(record_id)
+            )
+        )
+        if has_record_id:
+            key = ("id", str(record_id))
+        else:
+            key = (
+                "legacy",
+                tuple(record.get(column) for column in HISTORY_DEDUPE_COLUMNS),
+            )
+        if key not in unique_by_key:
+            ordered_keys.append(key)
+        unique_by_key[key] = record
+
+    return [unique_by_key[key] for key in ordered_keys]
 
 
 def _single_shape(shape, name):
