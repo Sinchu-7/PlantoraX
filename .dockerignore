@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+venv
+venv_keras3
+__pycache__
+**/__pycache__
+*.py[cod]
+
+data/plantvillage
+auto_downloaded_data
+prediction_history.csv
+models/plant_disease_model_compatible.keras
+.streamlit/secrets.toml

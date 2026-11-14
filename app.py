@@ -3,15 +3,21 @@ import pandas as pd
 import numpy as np
 import os
 import json
-import hashlib
 import csv
+import hashlib
+import hmac
+from pathlib import Path
 from datetime import datetime
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
-from tensorflow.keras.models import load_model
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+try:
+    from keras.models import load_model
+    from keras.applications.mobilenet_v2 import preprocess_input
+except ImportError:
+    from tensorflow.keras.models import load_model
+    from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, A4
@@ -42,22 +48,54 @@ st.set_page_config(
 # PATHS
 # ============================================================
 
-MODEL_PATH = os.path.join(
-    "models",
-    "plant_disease_model.keras"
-)
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
+OUTPUT_DIR = BASE_DIR / "output"
+DATA_DIR = Path(
+    os.environ.get("PLANT_APP_DATA_DIR", str(BASE_DIR))
+).expanduser()
+MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024
+PRODUCTION_MODE = os.environ.get("APP_ENV", "development").lower() == "production"
+PRODUCTION_USERNAME = os.environ.get("PLANT_APP_USERNAME", "")
+PRODUCTION_PASSWORD = os.environ.get("PLANT_APP_PASSWORD", "")
 
-CLASS_NAMES_PATH = os.path.join(
-    "output",
-    "class_names.json"
-)
 
-CONFUSION_MATRIX_PATH = os.path.join(
-    "output",
-    "confusion_matrix.png"
-)
+def resolve_model_path():
+    configured_path = os.environ.get("PLANT_MODEL_PATH")
+    if configured_path:
+        path = Path(configured_path).expanduser()
+        if not path.is_absolute():
+            path = BASE_DIR / path
+        return str(path)
 
-HISTORY_PATH = "prediction_history.csv"
+    for candidate in [
+        MODELS_DIR / "plant_disease_model_compatible.keras",
+        MODELS_DIR / "plant_disease_model.keras",
+        MODELS_DIR / "saved_model",
+    ]:
+        if candidate.is_file() or candidate.is_dir():
+            return str(candidate)
+
+    return str(MODELS_DIR / "plant_disease_model_compatible.keras")
+
+
+def resolve_model_candidates():
+    configured_path = os.environ.get("PLANT_MODEL_PATH")
+    if configured_path:
+        return [Path(resolve_model_path())]
+
+    return [
+        MODELS_DIR / "plant_disease_model_compatible.keras",
+        MODELS_DIR / "plant_disease_model.keras",
+        MODELS_DIR / "saved_model",
+    ]
+
+
+MODEL_PATH = resolve_model_path()
+CLASS_NAMES_PATH = OUTPUT_DIR / "class_names.json"
+CLASS_NAMES_TEXT_PATH = BASE_DIR / "data" / "splits" / "class_names.txt"
+CONFUSION_MATRIX_PATH = OUTPUT_DIR / "confusion_matrix.png"
+HISTORY_PATH = DATA_DIR / "prediction_history.csv"
 
 
 # ============================================================
@@ -103,7 +141,7 @@ def hash_password(password):
 # ============================================================
 
 if "users" not in st.session_state:
-    st.session_state.users = {
+    st.session_state.users = {} if PRODUCTION_MODE else {
         "admin": hash_password("admin123")
     }
 
@@ -299,6 +337,15 @@ if not st.session_state.logged_in:
 
         st.markdown("### 🔐 Login")
 
+        if PRODUCTION_MODE and not (
+            PRODUCTION_USERNAME and PRODUCTION_PASSWORD
+        ):
+            st.error(
+                "Production authentication is not configured. Set "
+                "PLANT_APP_USERNAME and PLANT_APP_PASSWORD before starting the app."
+            )
+            st.stop()
+
         username = st.text_input(
             "Username",
             placeholder="Enter username"
@@ -319,40 +366,53 @@ if not st.session_state.logged_in:
             use_container_width=True
         ):
 
-            if username in st.session_state.users:
-
-                if (
-                    st.session_state.users[username]
-                    == hash_password(password)
-                ):
-
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.session_state.page = "🏠 Home"
-
-                    st.experimental_rerun()
-
-                else:
-
-                    st.error(
-                        "❌ Incorrect password."
+            if PRODUCTION_MODE:
+                authenticated = (
+                    hmac.compare_digest(
+                        username.encode("utf-8"),
+                        PRODUCTION_USERNAME.encode("utf-8")
                     )
-
+                    and hmac.compare_digest(
+                        password.encode("utf-8"),
+                        PRODUCTION_PASSWORD.encode("utf-8")
+                    )
+                )
             else:
-
-                st.error(
-                    "❌ Username not found."
+                authenticated = (
+                    username in st.session_state.users
+                    and hmac.compare_digest(
+                        st.session_state.users.get(username, "").encode("utf-8"),
+                        hash_password(password).encode("utf-8")
+                    )
                 )
 
+            if authenticated:
+
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.session_state.page = "🏠 Home"
+
+                st.rerun()
+
+            st.error("❌ Invalid username or password.")
+
         st.write("")
 
-        st.info(
-            "Demo Login: Username = admin | Password = admin123"
-        )
+        if not PRODUCTION_MODE:
+            st.info(
+                "Development demo login: Username = admin | Password = admin123. "
+                "Do not use demo credentials in production."
+            )
 
         st.write("")
 
-        if not st.session_state.show_register:
+        if PRODUCTION_MODE:
+            st.info(
+                "Production mode uses the configured application account; "
+                "self-service registration is disabled."
+            )
+
+        elif not st.session_state.show_register:
 
             if st.button(
                 "➕ Create New Account"
@@ -360,7 +420,7 @@ if not st.session_state.logged_in:
 
                 st.session_state.show_register = True
 
-                st.experimental_rerun()
+                st.rerun()
 
         else:
 
@@ -422,7 +482,7 @@ if not st.session_state.logged_in:
 
                         st.session_state.show_register = False
 
-                        st.experimental_rerun()
+                        st.rerun()
 
             with col2:
 
@@ -432,7 +492,7 @@ if not st.session_state.logged_in:
 
                     st.session_state.show_register = False
 
-                    st.experimental_rerun()
+                    st.rerun()
 
     st.stop()
 
@@ -444,11 +504,58 @@ if not st.session_state.logged_in:
 @st.cache_resource
 def load_plant_model():
 
-    if not os.path.exists(MODEL_PATH):
-        return None
+    load_errors = []
 
-    return load_model(
-        MODEL_PATH
+    for model_path in resolve_model_candidates():
+        if not model_path.exists():
+            continue
+
+        try:
+            return load_model(str(model_path), compile=False), None
+        except Exception as keras_error:
+            load_errors.append(
+                f"Keras could not load {model_path}: {keras_error}"
+            )
+
+        if model_path.is_dir():
+            try:
+                import tensorflow as tf
+
+                saved_model = tf.saved_model.load(str(model_path))
+                signature = saved_model.signatures["serving_default"]
+                input_name = next(
+                    iter(signature.structured_input_signature[1])
+                )
+                output_name = next(iter(signature.structured_outputs))
+
+                class SavedModelPredictor:
+                    def predict(self, images, verbose=0):
+                        del verbose
+                        outputs = signature(
+                            **{
+                                input_name: tf.convert_to_tensor(
+                                    images,
+                                    dtype=tf.float32
+                                )
+                            }
+                        )
+                        return outputs[output_name].numpy()
+
+                predictor = SavedModelPredictor()
+                predictor._saved_model = saved_model
+                return predictor, None
+            except Exception as saved_model_error:
+                load_errors.append(
+                    f"TensorFlow could not load SavedModel {model_path}: "
+                    f"{saved_model_error}"
+                )
+
+    if load_errors:
+        return None, "No model could be loaded. " + " | ".join(load_errors)
+
+    return None, (
+        "No model file found. Set PLANT_MODEL_PATH or add a supported model "
+        "under the models directory."
     )
 
 
@@ -459,22 +566,34 @@ def load_plant_model():
 @st.cache_data
 def load_class_names():
 
-    if os.path.exists(
-        CLASS_NAMES_PATH
-    ):
+    if os.path.exists(CLASS_NAMES_PATH):
 
-        with open(
-            CLASS_NAMES_PATH,
-            "r",
-            encoding="utf-8"
-        ) as f:
+        try:
+            with open(
+                CLASS_NAMES_PATH,
+                "r",
+                encoding="utf-8"
+            ) as f:
+                data = json.load(f)
 
-            data = json.load(f)
+            if isinstance(data, dict):
+                return list(data.values())
 
-        if isinstance(data, dict):
-            return list(data.values())
+            if isinstance(data, list):
+                return data
+        except (ValueError, OSError):
+            pass
 
-        return data
+    if CLASS_NAMES_TEXT_PATH.is_file():
+        class_names = [
+            name.strip()
+            for name in CLASS_NAMES_TEXT_PATH.read_text(
+                encoding="utf-8"
+            ).splitlines()
+            if name.strip()
+        ]
+        if class_names:
+            return class_names
 
     return [
         "Apple___Apple_scab",
@@ -518,7 +637,6 @@ def load_class_names():
     ]
 
 
-model = load_plant_model()
 class_names = load_class_names()
 
 
@@ -552,6 +670,27 @@ def get_risk(confidence):
         return "Medium Confidence"
 
     return "Low Confidence"
+
+
+def decode_uploaded_image(uploaded_file):
+    image_bytes = uploaded_file.getvalue()
+    if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
+        raise ValueError(
+            f"Image is too large. Maximum upload size is "
+            f"{MAX_IMAGE_SIZE_BYTES // (1024 * 1024)} MB."
+        )
+
+    try:
+        with Image.open(BytesIO(image_bytes)) as source:
+            if source.width * source.height > 25_000_000:
+                raise ValueError("Image dimensions are too large to process.")
+            source.verify()
+
+        with Image.open(BytesIO(image_bytes)) as source:
+            source.load()
+            return source.convert("RGB")
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise ValueError(f"Could not read the uploaded image: {exc}") from exc
 
 
 # ============================================================
@@ -589,11 +728,9 @@ def save_prediction(
     # SAVE TO CSV
     # --------------------------------------------------------
 
-    file_exists = os.path.exists(
-        HISTORY_PATH
-    )
-
     try:
+        HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        file_exists = os.path.exists(HISTORY_PATH)
 
         with open(
             HISTORY_PATH,
@@ -641,15 +778,11 @@ def read_history():
     # LOAD CSV
     # --------------------------------------------------------
 
-    if os.path.exists(
-        HISTORY_PATH
-    ):
+    if os.path.exists(HISTORY_PATH):
 
         try:
 
-            csv_df = pd.read_csv(
-                HISTORY_PATH
-            )
+            csv_df = pd.read_csv(HISTORY_PATH)
 
             if not csv_df.empty:
 
@@ -659,8 +792,8 @@ def read_history():
                     )
                 )
 
-        except Exception:
-            pass
+        except (OSError, pd.errors.ParserError, UnicodeDecodeError) as exc:
+            st.warning(f"Could not read prediction history: {exc}")
 
     # --------------------------------------------------------
     # LOAD SESSION RECORDS
@@ -1018,7 +1151,7 @@ with st.sidebar:
                 "Profile updated!"
             )
 
-            st.experimental_rerun()
+            st.rerun()
 
     st.divider()
 
@@ -1063,7 +1196,7 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.session_state.username = ""
 
-        st.experimental_rerun()
+        st.rerun()
 
 
 # ============================================================
@@ -1206,7 +1339,7 @@ if page == "🏠 Home":
                 "🌿 Disease Detection"
             )
 
-            st.experimental_rerun()
+            st.rerun()
 
     with quick_col2:
 
@@ -1232,7 +1365,7 @@ if page == "🏠 Home":
                 "📊 Prediction History"
             )
 
-            st.experimental_rerun()
+            st.rerun()
 
     st.write("")
 
@@ -1274,14 +1407,12 @@ elif page == "🌿 Disease Detection":
         "Upload a plant leaf image to identify the disease."
     )
 
+    model, model_load_error = load_plant_model()
+
     if model is None:
 
         st.error(
-            "❌ Model file not found."
-        )
-
-        st.info(
-            f"Expected model: {MODEL_PATH}"
+            f"❌ {model_load_error}"
         )
 
         st.stop()
@@ -1297,9 +1428,11 @@ elif page == "🌿 Disease Detection":
 
     if uploaded_file:
 
-        image = Image.open(
-            uploaded_file
-        ).convert("RGB")
+        try:
+            image = decode_uploaded_image(uploaded_file)
+        except ValueError as exc:
+            st.error(str(exc))
+            st.stop()
 
         col1, col2 = st.columns(2)
 
@@ -1308,7 +1441,7 @@ elif page == "🌿 Disease Detection":
             st.image(
                 image,
                 caption="Uploaded Image",
-                use_column_width=True
+                width="stretch"
             )
 
         with col2:
@@ -1370,14 +1503,36 @@ elif page == "🌿 Disease Detection":
                 # PREDICT
                 # --------------------------------------------
 
-                predictions = model.predict(
-                    image_array,
-                    verbose=0
-                )[0]
+                try:
+                    predictions = np.asarray(
+                        model.predict(image_array, verbose=0)[0]
+                    )
+                except Exception as exc:
+                    st.error(f"Model prediction failed: {exc}")
+                    st.stop()
+
+                if (
+                    predictions.ndim != 1
+                    or len(predictions) != len(class_names)
+                    or not np.isfinite(predictions).all()
+                    or np.any(predictions < 0)
+                    or np.any(predictions > 1)
+                    or not np.isclose(
+                        np.sum(predictions),
+                        1.0,
+                        rtol=1e-3,
+                        atol=1e-3
+                    )
+                ):
+                    st.error(
+                        "The model returned invalid class scores. Check that the "
+                        "model and class_names.json use the same class order."
+                    )
+                    st.stop()
 
                 top_indices = np.argsort(
                     predictions
-                )[-3:][::-1]
+                )[-min(3, len(predictions)):][::-1]
 
                 top_predictions = []
 
@@ -1385,9 +1540,7 @@ elif page == "🌿 Disease Detection":
 
                     disease = class_names[index]
 
-                    confidence = (
-                        predictions[index] * 100
-                    )
+                    confidence = float(predictions[index] * 100)
 
                     top_predictions.append(
                         (
@@ -1925,14 +2078,12 @@ elif page == "📈 Model Evaluation":
         "📊 Confusion Matrix"
     )
 
-    if os.path.exists(
-        CONFUSION_MATRIX_PATH
-    ):
+    if os.path.exists(CONFUSION_MATRIX_PATH):
 
         st.image(
-            CONFUSION_MATRIX_PATH,
+            str(CONFUSION_MATRIX_PATH),
             caption="Test Set Confusion Matrix",
-            use_column_width=True
+            width="stretch"
         )
 
     else:

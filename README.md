@@ -1,11 +1,40 @@
 # 🌿 Plant Disease Detection using MobileNetV2
 
+## 🚀 Quick Start
+
+```bash
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
+To download PlantVillage into class folders that you can browse from the **Choose a plant image** uploader:
+
+```bash
+pip install -r requirements-dataset.txt
+python download_dataset.py
+```
+
+The download is large (about 827 MB before export) and is saved under `data/plantvillage` by default. Dataset images and trained model files are intentionally ignored by Git and are not included in commits. To use the images, choose one of the exported files from `data/plantvillage/<class>/` in the app.
+
+Use `python download_dataset.py --max-images 3` to verify the downloader on a small sample before exporting the full dataset.
+
+### Deploy the Streamlit app
+
+This repository is a Python/Streamlit application, not a static website. Netlify cannot run the Streamlit server, so its deploy-preview check is not a valid deployment target for this app. Use the included `render.yaml` blueprint to deploy the Dockerized app to Render, or connect the repository to Streamlit Community Cloud and set the main file to `app.py`.
+
+For Render, create a new Blueprint from this repository and set `PLANT_APP_USERNAME` and `PLANT_APP_PASSWORD` in the service environment before accessing the app. The blueprint enables production mode, uses the committed model files, and checks Streamlit's health endpoint. Choose a service plan with enough memory for TensorFlow and the model.
+
+### Production configuration
+
+Set `APP_ENV=production`, `PLANT_APP_USERNAME`, and `PLANT_APP_PASSWORD` in the hosting provider's environment settings. Production mode disables the demo account and self-service registration. Set `PLANT_MODEL_PATH` if the model is stored outside `models/`, and set `PLANT_APP_DATA_DIR` to a persistent writable directory if prediction history must survive redeployments. Do not use the development demo credentials in production.
+
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.16.1-orange.svg)
-![Keras](https://img.shields.io/badge/Keras-3.1.1-red.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.29.0-ff4b4b.svg)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.15.0-orange.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.51.0-ff4b4b.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 **An AI-based plant disease detection system using MobileNetV2 Transfer Learning and the PlantVillage dataset.**
@@ -792,5 +821,3 @@ The final trained model achieved:
 63.98% Test Accuracy
 
 across 38 plant disease and healthy classes.
-
-
