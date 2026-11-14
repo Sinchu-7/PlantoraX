@@ -93,6 +93,7 @@ def resolve_model_candidates():
 
 MODEL_PATH = resolve_model_path()
 CLASS_NAMES_PATH = OUTPUT_DIR / "class_names.json"
+CLASS_NAMES_TEXT_PATH = BASE_DIR / "data" / "splits" / "class_names.txt"
 CONFUSION_MATRIX_PATH = OUTPUT_DIR / "confusion_matrix.png"
 HISTORY_PATH = DATA_DIR / "prediction_history.csv"
 
@@ -582,6 +583,17 @@ def load_class_names():
                 return data
         except (ValueError, OSError):
             pass
+
+    if CLASS_NAMES_TEXT_PATH.is_file():
+        class_names = [
+            name.strip()
+            for name in CLASS_NAMES_TEXT_PATH.read_text(
+                encoding="utf-8"
+            ).splitlines()
+            if name.strip()
+        ]
+        if class_names:
+            return class_names
 
     return [
         "Apple___Apple_scab",
