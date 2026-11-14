@@ -31,6 +31,9 @@ Use `python download_dataset.py --max-images 3` to verify the downloader on a sm
 This repository is a Python/Streamlit application, not a static website. Netlify cannot run the Streamlit server, so its deploy-preview check is not a valid deployment target for this app. Use the included `render.yaml` blueprint to deploy the Dockerized app to Render, or connect the repository to Streamlit Community Cloud and set the main file to `app.py`.
 
 For Render, create a new Blueprint from this repository and set `PLANT_APP_USERNAME` and `PLANT_APP_PASSWORD` in the service environment before accessing the app. The blueprint enables production mode, uses the committed model files, and checks Streamlit's health endpoint. Choose a service plan with enough memory for TensorFlow and the model.
+The Docker build context excludes notebooks, training and evaluation artifacts,
+and legacy model archives; the runtime SavedModel and class labels remain
+included.
 
 ### Production configuration
 
