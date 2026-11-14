@@ -11,7 +11,11 @@ from datetime import datetime
 from io import BytesIO
 
 from PIL import Image
-from plant_app_utils import decode_image_bytes
+from plant_app_utils import (
+    decode_image_bytes,
+    get_model_image_size,
+    validate_model_class_count,
+)
 
 try:
     from keras.models import load_model
@@ -528,6 +532,8 @@ def load_plant_model():
                     iter(signature.structured_input_signature[1])
                 )
                 output_name = next(iter(signature.structured_outputs))
+                input_spec = signature.structured_input_signature[1][input_name]
+                output_spec = signature.structured_outputs[output_name]
 
                 class SavedModelPredictor:
                     def predict(self, images, verbose=0):
@@ -543,6 +549,8 @@ def load_plant_model():
                         return outputs[output_name].numpy()
 
                 predictor = SavedModelPredictor()
+                predictor.input_shape = tuple(input_spec.shape)
+                predictor.output_shape = tuple(output_spec.shape)
                 predictor._saved_model = saved_model
                 return predictor, None
             except Exception as saved_model_error:
@@ -1405,6 +1413,13 @@ elif page == "🌿 Disease Detection":
 
         st.stop()
 
+    try:
+        model_height, model_width = get_model_image_size(model)
+        validate_model_class_count(model, class_names)
+    except (TypeError, ValueError) as exc:
+        st.error(f"Model configuration is invalid: {exc}")
+        st.stop()
+
     uploaded_file = st.file_uploader(
         "Choose a plant image",
         type=[
@@ -1448,7 +1463,7 @@ elif page == "🌿 Disease Detection":
             )
 
             st.write(
-                "**Model Input:** 128 × 128"
+                f"**Model Input:** {model_width} × {model_height}"
             )
 
             st.write(
@@ -1471,7 +1486,7 @@ elif page == "🌿 Disease Detection":
                 # --------------------------------------------
 
                 resized_image = image.resize(
-                    (128, 128)
+                    (model_width, model_height)
                 )
 
                 image_array = np.array(
