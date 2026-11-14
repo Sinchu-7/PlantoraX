@@ -17,6 +17,7 @@ from plant_app_utils import (
     escape_pdf_text,
     get_model_image_size,
     hash_password,
+    migrate_history_csv,
     normalize_profile_photo,
     sanitize_spreadsheet_dataframe,
     validate_model_class_count,
@@ -726,7 +727,12 @@ def save_prediction(
 
     try:
         HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-        file_exists = os.path.exists(HISTORY_PATH)
+        file_exists = (
+            HISTORY_PATH.is_file()
+            and HISTORY_PATH.stat().st_size > 0
+        )
+        if file_exists:
+            migrate_history_csv(HISTORY_PATH)
 
         with open(
             HISTORY_PATH,

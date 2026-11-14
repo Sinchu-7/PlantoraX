@@ -1,4 +1,5 @@
 import unittest
+import csv
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -17,6 +18,7 @@ from plant_app_utils import (
     deduplicate_history_records,
     get_model_image_size,
     hash_password,
+    migrate_history_csv,
     normalize_profile_photo,
     sanitize_spreadsheet_dataframe,
     sanitize_spreadsheet_value,
@@ -151,6 +153,35 @@ class HistoryIntegrityTests(unittest.TestCase):
             deduplicate_history_records([legacy, dict(legacy)]),
             [legacy],
         )
+
+    def test_migrates_existing_csv_without_losing_records(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            history_path = Path(temporary_directory) / "history.csv"
+            original_record = {
+                "Date": "2025-01-02 03:04:05",
+                "Username": "user",
+                "Image": "leaf.jpg",
+                "Prediction": "healthy",
+                "Confidence": "95.00%",
+                "Risk": "High Confidence",
+            }
+            with history_path.open("w", newline="", encoding="utf-8") as history_file:
+                writer = csv.DictWriter(
+                    history_file,
+                    fieldnames=list(original_record),
+                )
+                writer.writeheader()
+                writer.writerow(original_record)
+
+            self.assertTrue(migrate_history_csv(history_path))
+            with history_path.open("r", newline="", encoding="utf-8") as history_file:
+                rows = list(csv.DictReader(history_file))
+
+            self.assertEqual(len(rows), 1)
+            self.assertTrue(rows[0]["Record ID"])
+            for field, value in original_record.items():
+                self.assertEqual(rows[0][field], value)
+            self.assertFalse(migrate_history_csv(history_path))
 
 
 class PdfTextTests(unittest.TestCase):

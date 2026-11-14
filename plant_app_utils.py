@@ -3,12 +3,16 @@
 from io import BytesIO
 from datetime import datetime, timezone
 import base64
+import csv
 import hashlib
 import html
 import hmac
 import math
+import os
 import re
 import secrets
+import tempfile
+from pathlib import Path
 from uuid import uuid4
 from xml.sax.saxutils import escape
 
@@ -45,6 +49,57 @@ def create_history_record(username, filename, prediction, confidence, risk, now=
         "Confidence": f"{confidence:.2f}%",
         "Risk": risk,
     }
+
+
+def migrate_history_csv(history_path):
+    history_path = Path(history_path)
+    if not history_path.is_file():
+        return False
+
+    with history_path.open("r", newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        fieldnames = reader.fieldnames
+        if not fieldnames:
+            return False
+        records = list(reader)
+
+    if "Record ID" not in fieldnames:
+        fieldnames.insert(0, "Record ID")
+        needs_migration = True
+    else:
+        needs_migration = any(not record.get("Record ID") for record in records)
+
+    if not needs_migration:
+        return False
+
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            newline="",
+            encoding="utf-8",
+            dir=history_path.parent,
+            prefix=".prediction-history-",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            writer = csv.DictWriter(
+                temporary_file,
+                fieldnames=fieldnames,
+                extrasaction="ignore",
+            )
+            writer.writeheader()
+            for record in records:
+                if not record.get("Record ID"):
+                    record["Record ID"] = uuid4().hex
+                writer.writerow(record)
+        os.replace(temporary_path, history_path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+    return True
 
 
 def deduplicate_history_records(records):
