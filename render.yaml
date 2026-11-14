@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: plantorax
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PLANT_APP_USERNAME
+        sync: false
+      - key: PLANT_APP_PASSWORD
+        sync: false

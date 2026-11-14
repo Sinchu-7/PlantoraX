@@ -68,17 +68,27 @@ def resolve_model_path():
             path = BASE_DIR / path
         return str(path)
 
-    candidates = [
+    for candidate in [
+        MODELS_DIR / "plant_disease_model_compatible.keras",
+        MODELS_DIR / "plant_disease_model.keras",
+        MODELS_DIR / "saved_model",
+    ]:
+        if candidate.is_file() or candidate.is_dir():
+            return str(candidate)
+
+    return str(MODELS_DIR / "plant_disease_model_compatible.keras")
+
+
+def resolve_model_candidates():
+    configured_path = os.environ.get("PLANT_MODEL_PATH")
+    if configured_path:
+        return [Path(resolve_model_path())]
+
+    return [
         MODELS_DIR / "plant_disease_model_compatible.keras",
         MODELS_DIR / "plant_disease_model.keras",
         MODELS_DIR / "saved_model",
     ]
-
-    for candidate in candidates:
-        if candidate.is_file() or candidate.is_dir():
-            return str(candidate)
-
-    return str(candidates[0])
 
 
 MODEL_PATH = resolve_model_path()
@@ -493,15 +503,59 @@ if not st.session_state.logged_in:
 @st.cache_resource
 def load_plant_model():
 
-    model_path = resolve_model_path()
+    load_errors = []
 
-    if not os.path.exists(model_path):
-        return None, f"Model file or directory not found: {model_path}"
+    for model_path in resolve_model_candidates():
+        if not model_path.exists():
+            continue
 
-    try:
-        return load_model(model_path, compile=False), None
-    except Exception as exc:
-        return None, f"Could not load model from {model_path}: {exc}"
+        try:
+            return load_model(str(model_path), compile=False), None
+        except Exception as keras_error:
+            load_errors.append(
+                f"Keras could not load {model_path}: {keras_error}"
+            )
+
+        if model_path.is_dir():
+            try:
+                import tensorflow as tf
+
+                saved_model = tf.saved_model.load(str(model_path))
+                signature = saved_model.signatures["serving_default"]
+                input_name = next(
+                    iter(signature.structured_input_signature[1])
+                )
+                output_name = next(iter(signature.structured_outputs))
+
+                class SavedModelPredictor:
+                    def predict(self, images, verbose=0):
+                        del verbose
+                        outputs = signature(
+                            **{
+                                input_name: tf.convert_to_tensor(
+                                    images,
+                                    dtype=tf.float32
+                                )
+                            }
+                        )
+                        return outputs[output_name].numpy()
+
+                predictor = SavedModelPredictor()
+                predictor._saved_model = saved_model
+                return predictor, None
+            except Exception as saved_model_error:
+                load_errors.append(
+                    f"TensorFlow could not load SavedModel {model_path}: "
+                    f"{saved_model_error}"
+                )
+
+    if load_errors:
+        return None, "No model could be loaded. " + " | ".join(load_errors)
+
+    return None, (
+        "No model file found. Set PLANT_MODEL_PATH or add a supported model "
+        "under the models directory."
+    )
 
 
 # ============================================================
