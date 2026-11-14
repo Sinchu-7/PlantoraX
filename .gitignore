@@ -24,6 +24,7 @@ auto_downloaded_data/
 # IDE
 .vscode/
 .idea/
+.streamlit/secrets.toml
 
 # Logs
 *.log

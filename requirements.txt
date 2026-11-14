@@ -2,7 +2,7 @@
 tensorflow==2.15.0
 
 # Web Application Framework
-streamlit==1.29.0
+streamlit==1.51.0
 
 # Numerical Computation
 numpy==1.24.0

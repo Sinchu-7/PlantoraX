@@ -9,14 +9,27 @@ pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-For local testing, place plant leaf images in a folder such as `data/plantvillage` or upload directly from the app UI. Generated model files and dataset folders are intentionally ignored by Git.
+To download PlantVillage into class folders that you can browse from the **Choose a plant image** uploader:
+
+```bash
+pip install -r requirements-dataset.txt
+python download_dataset.py
+```
+
+The download is large (about 827 MB before export) and is saved under `data/plantvillage` by default. Dataset images and trained model files are intentionally ignored by Git and are not included in commits. To use the images, choose one of the exported files from `data/plantvillage/<class>/` in the app.
+
+Use `python download_dataset.py --max-images 3` to verify the downloader on a small sample before exporting the full dataset.
+
+### Production configuration
+
+Set `APP_ENV=production`, `PLANT_APP_USERNAME`, and `PLANT_APP_PASSWORD` in the hosting provider's environment settings. Production mode disables the demo account and self-service registration. Set `PLANT_MODEL_PATH` if the model is stored outside `models/`, and set `PLANT_APP_DATA_DIR` to a persistent writable directory if prediction history must survive redeployments. Do not use the development demo credentials in production.
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.16.1-orange.svg)
 ![Keras](https://img.shields.io/badge/Keras-3.1.1-red.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.29.0-ff4b4b.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.51.0-ff4b4b.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 **An AI-based plant disease detection system using MobileNetV2 Transfer Learning and the PlantVillage dataset.**
@@ -803,5 +816,3 @@ The final trained model achieved:
 63.98% Test Accuracy
 
 across 38 plant disease and healthy classes.
-
-
