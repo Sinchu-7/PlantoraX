@@ -5,13 +5,18 @@ import os
 import json
 import hashlib
 import csv
+from pathlib import Path
 from datetime import datetime
 from io import BytesIO
 
 from PIL import Image
 
-from tensorflow.keras.models import load_model
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+try:
+    from keras.models import load_model
+    from keras.applications.mobilenet_v2 import preprocess_input
+except ImportError:
+    from tensorflow.keras.models import load_model
+    from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, A4
@@ -42,22 +47,31 @@ st.set_page_config(
 # PATHS
 # ============================================================
 
-MODEL_PATH = os.path.join(
-    "models",
-    "plant_disease_model.keras"
-)
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
+OUTPUT_DIR = BASE_DIR / "output"
 
-CLASS_NAMES_PATH = os.path.join(
-    "output",
-    "class_names.json"
-)
 
-CONFUSION_MATRIX_PATH = os.path.join(
-    "output",
-    "confusion_matrix.png"
-)
+def resolve_model_path():
+    candidates = [
+        MODELS_DIR / "plant_disease_model_compatible.keras",
+        MODELS_DIR / "plant_disease_model.keras",
+        MODELS_DIR / "saved_model",
+    ]
 
-HISTORY_PATH = "prediction_history.csv"
+    for candidate in candidates:
+        if candidate.is_file() or candidate.is_dir():
+            return str(candidate)
+
+    return str(candidates[0])
+
+
+MODEL_PATH = resolve_model_path()
+CLASS_NAMES_PATH = OUTPUT_DIR / "class_names.json"
+CONFUSION_MATRIX_PATH = OUTPUT_DIR / "confusion_matrix.png"
+HISTORY_PATH = BASE_DIR / "prediction_history.csv"
+
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
@@ -330,7 +344,7 @@ if not st.session_state.logged_in:
                     st.session_state.username = username
                     st.session_state.page = "🏠 Home"
 
-                    st.experimental_rerun()
+                    st.rerun()
 
                 else:
 
@@ -360,7 +374,7 @@ if not st.session_state.logged_in:
 
                 st.session_state.show_register = True
 
-                st.experimental_rerun()
+                st.rerun()
 
         else:
 
@@ -422,7 +436,7 @@ if not st.session_state.logged_in:
 
                         st.session_state.show_register = False
 
-                        st.experimental_rerun()
+                        st.rerun()
 
             with col2:
 
@@ -432,7 +446,7 @@ if not st.session_state.logged_in:
 
                     st.session_state.show_register = False
 
-                    st.experimental_rerun()
+                    st.rerun()
 
     st.stop()
 
@@ -444,12 +458,15 @@ if not st.session_state.logged_in:
 @st.cache_resource
 def load_plant_model():
 
-    if not os.path.exists(MODEL_PATH):
+    model_path = resolve_model_path()
+
+    if not os.path.exists(model_path):
         return None
 
-    return load_model(
-        MODEL_PATH
-    )
+    try:
+        return load_model(model_path, compile=False)
+    except Exception:
+        return None
 
 
 # ============================================================
@@ -459,22 +476,25 @@ def load_plant_model():
 @st.cache_data
 def load_class_names():
 
-    if os.path.exists(
-        CLASS_NAMES_PATH
-    ):
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-        with open(
-            CLASS_NAMES_PATH,
-            "r",
-            encoding="utf-8"
-        ) as f:
+    if os.path.exists(CLASS_NAMES_PATH):
 
-            data = json.load(f)
+        try:
+            with open(
+                CLASS_NAMES_PATH,
+                "r",
+                encoding="utf-8"
+            ) as f:
+                data = json.load(f)
 
-        if isinstance(data, dict):
-            return list(data.values())
+            if isinstance(data, dict):
+                return list(data.values())
 
-        return data
+            if isinstance(data, list):
+                return data
+        except (ValueError, OSError):
+            pass
 
     return [
         "Apple___Apple_scab",
@@ -589,9 +609,8 @@ def save_prediction(
     # SAVE TO CSV
     # --------------------------------------------------------
 
-    file_exists = os.path.exists(
-        HISTORY_PATH
-    )
+    HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    file_exists = os.path.exists(HISTORY_PATH)
 
     try:
 
@@ -641,15 +660,11 @@ def read_history():
     # LOAD CSV
     # --------------------------------------------------------
 
-    if os.path.exists(
-        HISTORY_PATH
-    ):
+    if os.path.exists(HISTORY_PATH):
 
         try:
 
-            csv_df = pd.read_csv(
-                HISTORY_PATH
-            )
+            csv_df = pd.read_csv(HISTORY_PATH)
 
             if not csv_df.empty:
 
@@ -1018,7 +1033,7 @@ with st.sidebar:
                 "Profile updated!"
             )
 
-            st.experimental_rerun()
+            st.rerun()
 
     st.divider()
 
@@ -1063,7 +1078,7 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.session_state.username = ""
 
-        st.experimental_rerun()
+        st.rerun()
 
 
 # ============================================================
@@ -1206,7 +1221,7 @@ if page == "🏠 Home":
                 "🌿 Disease Detection"
             )
 
-            st.experimental_rerun()
+            st.rerun()
 
     with quick_col2:
 
@@ -1232,7 +1247,7 @@ if page == "🏠 Home":
                 "📊 Prediction History"
             )
 
-            st.experimental_rerun()
+            st.rerun()
 
     st.write("")
 
@@ -1925,12 +1940,10 @@ elif page == "📈 Model Evaluation":
         "📊 Confusion Matrix"
     )
 
-    if os.path.exists(
-        CONFUSION_MATRIX_PATH
-    ):
+    if os.path.exists(CONFUSION_MATRIX_PATH):
 
         st.image(
-            CONFUSION_MATRIX_PATH,
+            str(CONFUSION_MATRIX_PATH),
             caption="Test Set Confusion Matrix",
             use_column_width=True
         )
