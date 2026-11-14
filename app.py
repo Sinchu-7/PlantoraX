@@ -10,7 +10,8 @@ from pathlib import Path
 from datetime import datetime
 from io import BytesIO
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
+from plant_app_utils import decode_image_bytes
 
 try:
     from keras.models import load_model
@@ -673,24 +674,11 @@ def get_risk(confidence):
 
 
 def decode_uploaded_image(uploaded_file):
-    image_bytes = uploaded_file.getvalue()
-    if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
-        raise ValueError(
-            f"Image is too large. Maximum upload size is "
-            f"{MAX_IMAGE_SIZE_BYTES // (1024 * 1024)} MB."
-        )
-
-    try:
-        with Image.open(BytesIO(image_bytes)) as source:
-            if source.width * source.height > 25_000_000:
-                raise ValueError("Image dimensions are too large to process.")
-            source.verify()
-
-        with Image.open(BytesIO(image_bytes)) as source:
-            source.load()
-            return source.convert("RGB")
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise ValueError(f"Could not read the uploaded image: {exc}") from exc
+    return decode_image_bytes(
+        uploaded_file.getvalue(),
+        max_size_bytes=MAX_IMAGE_SIZE_BYTES,
+        max_pixels=25_000_000,
+    )
 
 
 # ============================================================

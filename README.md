@@ -16,6 +16,12 @@ pip install -r requirements-dataset.txt
 python download_dataset.py
 ```
 
+### Run the tests
+
+```bash
+python -m unittest discover -s tests
+```
+
 The download is large (about 827 MB before export) and is saved under `data/plantvillage` by default. Dataset images and trained model files are intentionally ignored by Git and are not included in commits. To use the images, choose one of the exported files from `data/plantvillage/<class>/` in the app.
 
 Use `python download_dataset.py --max-images 3` to verify the downloader on a small sample before exporting the full dataset.
