@@ -2,10 +2,44 @@
 
 import argparse
 import json
+import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+
+
+def save_image_if_missing(image, image_path):
+    image_path = Path(image_path)
+    if image_path.exists():
+        if not image_path.is_file():
+            raise FileExistsError(
+                f"Expected an image file but found another path: {image_path}"
+            )
+        try:
+            with Image.open(image_path) as existing:
+                existing.verify()
+            return False
+        except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+            pass
+
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=image_path.parent,
+            prefix=".plantvillage-",
+            suffix=".jpg",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+        image.save(temporary_path, format="JPEG", quality=95)
+        os.replace(temporary_path, image_path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+    return True
 
 
 def parse_args():
@@ -31,7 +65,10 @@ def parse_args():
         "--max-images",
         type=int,
         default=0,
-        help="Export at most this many images (0 exports the full dataset).",
+        help=(
+            "Export at most this many new images per run (0 exports the full "
+            "dataset). Existing valid images are kept and skipped."
+        ),
     )
     return parser.parse_args()
 
@@ -71,15 +108,15 @@ def main():
         class_dir = args.output_dir / class_names[class_index]
         class_dir.mkdir(parents=True, exist_ok=True)
         image_path = class_dir / f"image_{counts[class_index]:05d}.jpg"
-        Image.fromarray(np.asarray(image, dtype=np.uint8)).save(
+        image_to_save = Image.fromarray(np.asarray(image, dtype=np.uint8))
+        if save_image_if_missing(
+            image_to_save,
             image_path,
-            format="JPEG",
-            quality=95,
-        )
+        ):
+            total += 1
         counts[class_index] += 1
-        total += 1
 
-        if total % 1000 == 0:
+        if total and total % 1000 == 0:
             print(f"Exported {total} images...", flush=True)
         if args.max_images and total >= args.max_images:
             break
@@ -89,8 +126,12 @@ def main():
         json.dumps(class_names, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"Exported {sum(counts)} images to {args.output_dir}")
-    print(f"Exported {len(class_names)} class folders.")
+    class_folder_count = sum(
+        (args.output_dir / class_name).is_dir()
+        for class_name in class_names
+    )
+    print(f"Exported {total} new images to {args.output_dir}")
+    print(f"Dataset has {class_folder_count} class folders.")
 
 
 if __name__ == "__main__":

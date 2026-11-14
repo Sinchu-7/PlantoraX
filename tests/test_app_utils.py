@@ -1,11 +1,14 @@
 import unittest
 from datetime import datetime, timezone
 from io import BytesIO
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 
 import pandas as pd
 from PIL import Image
 
+from download_dataset import save_image_if_missing
 from plant_app_utils import (
     create_history_record,
     decode_image_bytes,
@@ -243,6 +246,45 @@ class PasswordHashTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least 12"):
             validate_new_password("short")
         validate_new_password("long enough password")
+
+
+class DatasetResumeTests(unittest.TestCase):
+    def test_keeps_existing_valid_image_without_overwriting(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            image_path = Path(temporary_directory) / "image_00000.jpg"
+            original = Image.new("RGB", (4, 4), color="green")
+            replacement = Image.new("RGB", (4, 4), color="red")
+
+            self.assertTrue(save_image_if_missing(original, image_path))
+            original_bytes = image_path.read_bytes()
+
+            self.assertFalse(save_image_if_missing(replacement, image_path))
+            self.assertEqual(image_path.read_bytes(), original_bytes)
+
+    def test_replaces_a_partial_or_corrupt_image(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            image_path = Path(temporary_directory) / "image_00000.jpg"
+            image_path.write_bytes(b"partial image")
+
+            self.assertTrue(
+                save_image_if_missing(
+                    Image.new("RGB", (4, 4), color="green"),
+                    image_path,
+                )
+            )
+            with Image.open(image_path) as image:
+                self.assertEqual(image.size, (4, 4))
+
+    def test_leaves_no_temporary_image_after_save(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            image_path = Path(temporary_directory) / "image_00000.jpg"
+
+            save_image_if_missing(Image.new("RGB", (4, 4)), image_path)
+
+            self.assertEqual(
+                [path.name for path in Path(temporary_directory).iterdir()],
+                ["image_00000.jpg"],
+            )
 
 
 if __name__ == "__main__":
