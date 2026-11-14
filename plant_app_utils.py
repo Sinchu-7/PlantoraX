@@ -161,6 +161,15 @@ def escape_html_text(value):
     return html.escape(str(value), quote=True)
 
 
+def dataframe_to_html(dataframe):
+    return dataframe.to_html(
+        index=False,
+        escape=True,
+        border=0,
+        classes="app-dataframe",
+    )
+
+
 def validate_profile_fields(name, email, phone):
     name = name.strip()
     email = email.strip()

@@ -12,6 +12,7 @@ from PIL import Image
 from download_dataset import save_image_if_missing
 from plant_app_utils import (
     create_history_record,
+    dataframe_to_html,
     decode_image_bytes,
     escape_html_text,
     escape_pdf_text,
@@ -193,6 +194,32 @@ class PdfTextTests(unittest.TestCase):
 
     def test_converts_non_string_cell_values(self):
         self.assertEqual(escape_pdf_text(95.5), "95.5")
+
+
+class DataframeHtmlTests(unittest.TestCase):
+    def test_renders_semantic_html_table_without_index(self):
+        dataframe = pd.DataFrame(
+            {"Parameter": ["Architecture"], "Value": ["CNN"]}
+        )
+
+        markup = dataframe_to_html(dataframe)
+
+        self.assertIn("<table", markup)
+        self.assertIn("<th>Parameter</th>", markup)
+        self.assertIn("<td>Architecture</td>", markup)
+        self.assertNotIn("<th></th>", markup)
+
+    def test_escapes_untrusted_headers_and_cell_values(self):
+        dataframe = pd.DataFrame(
+            {'<img src=x onerror="alert(1)">': ['<script>alert("x")</script>']}
+        )
+
+        markup = dataframe_to_html(dataframe)
+
+        self.assertNotIn("<img", markup)
+        self.assertNotIn("<script>", markup)
+        self.assertIn("&lt;img", markup)
+        self.assertIn("&lt;script&gt;", markup)
 
 
 class SpreadsheetSafetyTests(unittest.TestCase):

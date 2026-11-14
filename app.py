@@ -13,6 +13,7 @@ from plant_app_utils import (
     create_history_record,
     deduplicate_history_records,
     decode_image_bytes,
+    dataframe_to_html,
     escape_html_text,
     escape_pdf_text,
     get_model_image_size,
@@ -1447,7 +1448,7 @@ elif page == "🌿 Disease Detection":
             st.image(
                 image,
                 caption="Uploaded Image",
-                width="stretch"
+                width=400
             )
 
         with col2:
@@ -1857,10 +1858,9 @@ elif page == "📊 Prediction History":
                 "📋 Your Prediction Records"
             )
 
-            st.dataframe(
-                user_history,
-                use_container_width=True,
-                hide_index=True
+            st.markdown(
+                dataframe_to_html(user_history),
+                unsafe_allow_html=True,
             )
 
             st.write("")
@@ -2069,10 +2069,9 @@ elif page == "📈 Model Evaluation":
         ]
     })
 
-    st.dataframe(
-        model_info,
-        use_container_width=True,
-        hide_index=True
+    st.markdown(
+        dataframe_to_html(model_info),
+        unsafe_allow_html=True,
     )
 
     st.divider()
@@ -2090,7 +2089,7 @@ elif page == "📈 Model Evaluation":
         st.image(
             str(CONFUSION_MATRIX_PATH),
             caption="Test Set Confusion Matrix",
-            width="stretch"
+            width=700
         )
 
     else:
@@ -2153,10 +2152,9 @@ elif page == "ℹ️ About":
         ]
     })
 
-    st.dataframe(
-        technologies,
-        use_container_width=True,
-        hide_index=True
+    st.markdown(
+        dataframe_to_html(technologies),
+        unsafe_allow_html=True,
     )
 
     st.divider()
@@ -2216,10 +2214,9 @@ elif page == "ℹ️ About":
         ]
     })
 
-    st.dataframe(
-        performance,
-        use_container_width=True,
-        hide_index=True
+    st.markdown(
+        dataframe_to_html(performance),
+        unsafe_allow_html=True,
     )
 
     st.divider()
