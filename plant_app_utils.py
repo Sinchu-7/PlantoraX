@@ -2,9 +2,13 @@
 
 from io import BytesIO
 from datetime import datetime, timezone
+import base64
+import hashlib
 import html
+import hmac
 import math
 import re
+import secrets
 from uuid import uuid4
 from xml.sax.saxutils import escape
 
@@ -23,6 +27,8 @@ HISTORY_DEDUPE_COLUMNS = (
 MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_PROFILE_PHOTO_PIXELS = 10_000_000
 PROFILE_PHOTO_MAX_DIMENSION = 512
+PASSWORD_HASH_ITERATIONS = 600_000
+PASSWORD_MIN_LENGTH = 12
 
 
 def create_history_record(username, filename, prediction, confidence, risk, now=None):
@@ -132,6 +138,54 @@ def normalize_profile_photo(image_bytes):
     buffer = BytesIO()
     image.save(buffer, format="JPEG", quality=85, optimize=True)
     return buffer.getvalue()
+
+
+def hash_password(password, salt=None, iterations=PASSWORD_HASH_ITERATIONS):
+    if not isinstance(password, str) or not password:
+        raise ValueError("Password must be a non-empty string.")
+    if not 1 <= iterations <= 2_000_000:
+        raise ValueError("Password hash iteration count is out of range.")
+
+    salt = salt or secrets.token_bytes(16)
+    if not isinstance(salt, bytes) or len(salt) < 16:
+        raise ValueError("Password hash salt must contain at least 16 bytes.")
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+    return "pbkdf2_sha256${}${}${}".format(
+        iterations,
+        base64.urlsafe_b64encode(salt).decode("ascii"),
+        base64.urlsafe_b64encode(digest).decode("ascii"),
+    )
+
+
+def verify_password(password, encoded_hash):
+    try:
+        algorithm, iteration_text, salt_text, digest_text = encoded_hash.split("$")
+        iterations = int(iteration_text)
+        if algorithm != "pbkdf2_sha256" or not 1 <= iterations <= 2_000_000:
+            return False
+        salt = base64.urlsafe_b64decode(salt_text.encode("ascii"))
+        expected_digest = base64.urlsafe_b64decode(digest_text.encode("ascii"))
+        actual_digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            iterations,
+        )
+        return hmac.compare_digest(actual_digest, expected_digest)
+    except (AttributeError, TypeError, ValueError, UnicodeEncodeError):
+        return False
+
+
+def validate_new_password(password):
+    if len(password) < PASSWORD_MIN_LENGTH:
+        raise ValueError(
+            f"Password must be at least {PASSWORD_MIN_LENGTH} characters long."
+        )
 
 
 def _single_shape(shape, name):

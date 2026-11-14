@@ -4,7 +4,6 @@ import numpy as np
 import os
 import json
 import csv
-import hashlib
 import hmac
 from pathlib import Path
 from io import BytesIO
@@ -17,10 +16,13 @@ from plant_app_utils import (
     escape_html_text,
     escape_pdf_text,
     get_model_image_size,
+    hash_password,
     normalize_profile_photo,
     sanitize_spreadsheet_dataframe,
     validate_model_class_count,
+    validate_new_password,
     validate_profile_fields,
+    verify_password,
 )
 
 try:
@@ -135,16 +137,6 @@ if "profile" not in st.session_state:
         "phone": "",
         "photo": None
     }
-
-
-# ============================================================
-# PASSWORD HASH
-# ============================================================
-
-def hash_password(password):
-    return hashlib.sha256(
-        password.encode("utf-8")
-    ).hexdigest()
 
 
 # ============================================================
@@ -391,9 +383,9 @@ if not st.session_state.logged_in:
             else:
                 authenticated = (
                     username in st.session_state.users
-                    and hmac.compare_digest(
-                        st.session_state.users.get(username, "").encode("utf-8"),
-                        hash_password(password).encode("utf-8")
+                    and verify_password(
+                        password,
+                        st.session_state.users.get(username, ""),
                     )
                 )
 
@@ -452,6 +444,7 @@ if not st.session_state.logged_in:
                 "Confirm Password",
                 type="password"
             )
+            st.caption("Use at least 12 characters for a new password.")
 
             col1, col2 = st.columns(2)
 
@@ -481,9 +474,13 @@ if not st.session_state.logged_in:
 
                     else:
 
-                        st.session_state.users[
-                            new_username
-                        ] = hash_password(
+                        try:
+                            validate_new_password(new_password)
+                        except ValueError as exc:
+                            st.error(str(exc))
+                            st.stop()
+
+                        st.session_state.users[new_username] = hash_password(
                             new_password
                         )
 

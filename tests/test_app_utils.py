@@ -13,11 +13,14 @@ from plant_app_utils import (
     escape_pdf_text,
     deduplicate_history_records,
     get_model_image_size,
+    hash_password,
     normalize_profile_photo,
     sanitize_spreadsheet_dataframe,
     sanitize_spreadsheet_value,
     validate_model_class_count,
+    validate_new_password,
     validate_profile_fields,
+    verify_password,
 )
 
 
@@ -216,6 +219,30 @@ class ProfileSafetyTests(unittest.TestCase):
             with self.subTest(profile=profile):
                 with self.assertRaises(ValueError):
                     validate_profile_fields(*profile)
+
+
+class PasswordHashTests(unittest.TestCase):
+    def test_hashes_with_unique_salts_and_verifies_password(self):
+        first_hash = hash_password("a sufficiently long password", iterations=1000)
+        second_hash = hash_password("a sufficiently long password", iterations=1000)
+
+        self.assertNotEqual(first_hash, second_hash)
+        self.assertTrue(verify_password("a sufficiently long password", first_hash))
+        self.assertFalse(verify_password("wrong password", first_hash))
+
+    def test_rejects_malformed_password_hashes(self):
+        self.assertFalse(verify_password("password", "not-a-password-hash"))
+        self.assertFalse(
+            verify_password(
+                "password",
+                "pbkdf2_sha256$999999999$YWJjZGVmZ2hpamtsbW5vcA==$YWJj",
+            )
+        )
+
+    def test_enforces_registration_password_length(self):
+        with self.assertRaisesRegex(ValueError, "at least 12"):
+            validate_new_password("short")
+        validate_new_password("long enough password")
 
 
 if __name__ == "__main__":

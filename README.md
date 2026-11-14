@@ -113,6 +113,9 @@ Prediction history can be downloaded as:
 ## 👤 User Login
 
 The application provides a simple login and account creation system.
+Development accounts created in the app require passwords of at least 12
+characters; their passwords are stored as salted PBKDF2 hashes in session
+memory. Production mode continues to use the configured environment account.
 
 ## 👤 User Profile
 
