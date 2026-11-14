@@ -1,5 +1,16 @@
 # 🌿 Plant Disease Detection using MobileNetV2
 
+## 🚀 Quick Start
+
+```bash
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
+For local testing, place plant leaf images in a folder such as `data/plantvillage` or upload directly from the app UI. Generated model files and dataset folders are intentionally ignored by Git.
+
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
