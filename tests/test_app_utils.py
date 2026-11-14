@@ -8,6 +8,7 @@ from PIL import Image
 from plant_app_utils import (
     create_history_record,
     decode_image_bytes,
+    escape_pdf_text,
     deduplicate_history_records,
     get_model_image_size,
     validate_model_class_count,
@@ -138,6 +139,17 @@ class HistoryIntegrityTests(unittest.TestCase):
             deduplicate_history_records([legacy, dict(legacy)]),
             [legacy],
         )
+
+
+class PdfTextTests(unittest.TestCase):
+    def test_escapes_markup_and_ampersands(self):
+        self.assertEqual(
+            escape_pdf_text("<b>leaf & stem</b>"),
+            "&lt;b&gt;leaf &amp; stem&lt;/b&gt;",
+        )
+
+    def test_converts_non_string_cell_values(self):
+        self.assertEqual(escape_pdf_text(95.5), "95.5")
 
 
 if __name__ == "__main__":

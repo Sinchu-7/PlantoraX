@@ -4,6 +4,7 @@ from io import BytesIO
 from datetime import datetime, timezone
 import math
 from uuid import uuid4
+from xml.sax.saxutils import escape
 
 from PIL import Image, UnidentifiedImageError
 
@@ -60,6 +61,10 @@ def deduplicate_history_records(records):
         unique_by_key[key] = record
 
     return [unique_by_key[key] for key in ordered_keys]
+
+
+def escape_pdf_text(value):
+    return escape(str(value))
 
 
 def _single_shape(shape, name):

@@ -14,6 +14,7 @@ from plant_app_utils import (
     create_history_record,
     deduplicate_history_records,
     decode_image_bytes,
+    escape_pdf_text,
     get_model_image_size,
     validate_model_class_count,
 )
@@ -895,7 +896,7 @@ def create_pdf(df):
         table_data.append(
             [
                 Paragraph(
-                    str(column),
+                    escape_pdf_text(column),
                     body_style
                 )
                 for column in df.columns
@@ -909,7 +910,7 @@ def create_pdf(df):
             table_data.append(
                 [
                     Paragraph(
-                        str(value),
+                        escape_pdf_text(value),
                         body_style
                     )
                     for value in row.tolist()
