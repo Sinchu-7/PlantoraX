@@ -2,7 +2,9 @@
 
 from io import BytesIO
 from datetime import datetime, timezone
+import html
 import math
+import re
 from uuid import uuid4
 from xml.sax.saxutils import escape
 
@@ -18,6 +20,9 @@ HISTORY_DEDUPE_COLUMNS = (
     "Confidence",
     "Risk",
 )
+MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024
+MAX_PROFILE_PHOTO_PIXELS = 10_000_000
+PROFILE_PHOTO_MAX_DIMENSION = 512
 
 
 def create_history_record(username, filename, prediction, confidence, risk, now=None):
@@ -89,6 +94,44 @@ def sanitize_spreadsheet_dataframe(dataframe):
                 sanitize_spreadsheet_value
             )
     return safe_dataframe
+
+
+def escape_html_text(value):
+    return html.escape(str(value), quote=True)
+
+
+def validate_profile_fields(name, email, phone):
+    name = name.strip()
+    email = email.strip()
+    phone = phone.strip()
+
+    if not name or len(name) > 80:
+        raise ValueError("Name must contain between 1 and 80 characters.")
+    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise ValueError("Enter a valid email address.")
+    if len(email) > 254:
+        raise ValueError("Email address must be 254 characters or fewer.")
+    if phone and (
+        len(phone) > 32
+        or not re.fullmatch(r"[0-9+().\-\s]+", phone)
+    ):
+        raise ValueError("Enter a valid phone number.")
+
+    return name, email, phone
+
+
+def normalize_profile_photo(image_bytes):
+    image = decode_image_bytes(
+        image_bytes,
+        max_size_bytes=MAX_PROFILE_PHOTO_BYTES,
+        max_pixels=MAX_PROFILE_PHOTO_PIXELS,
+    )
+    image.thumbnail(
+        (PROFILE_PHOTO_MAX_DIMENSION, PROFILE_PHOTO_MAX_DIMENSION)
+    )
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG", quality=85, optimize=True)
+    return buffer.getvalue()
 
 
 def _single_shape(shape, name):

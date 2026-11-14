@@ -14,10 +14,13 @@ from plant_app_utils import (
     create_history_record,
     deduplicate_history_records,
     decode_image_bytes,
+    escape_html_text,
     escape_pdf_text,
     get_model_image_size,
+    normalize_profile_photo,
     sanitize_spreadsheet_dataframe,
     validate_model_class_count,
+    validate_profile_fields,
 )
 
 try:
@@ -1038,17 +1041,19 @@ with st.sidebar:
         )
 
     st.markdown(
-        f'<div class="profile-name">{profile["name"]}</div>',
+        f'<div class="profile-name">'
+        f'{escape_html_text(profile["name"])}</div>',
         unsafe_allow_html=True
     )
 
     st.markdown(
-        f'<div class="profile-email">📧 {profile["email"]}</div>',
+        f'<div class="profile-email">📧 '
+        f'{escape_html_text(profile["email"])}</div>',
         unsafe_allow_html=True
     )
 
     phone_display = (
-        profile["phone"]
+        escape_html_text(profile["phone"])
         if profile["phone"]
         else "Phone not added"
     )
@@ -1070,17 +1075,20 @@ with st.sidebar:
 
         profile_name = st.text_input(
             "Name",
-            value=profile["name"]
+            value=profile["name"],
+            max_chars=80,
         )
 
         profile_email = st.text_input(
             "Gmail",
-            value=profile["email"]
+            value=profile["email"],
+            max_chars=254,
         )
 
         profile_phone = st.text_input(
             "Phone Number",
-            value=profile["phone"]
+            value=profile["phone"],
+            max_chars=32,
         )
 
         uploaded_profile_photo = st.file_uploader(
@@ -1090,12 +1098,32 @@ with st.sidebar:
                 "jpeg",
                 "png"
             ],
-            key="profile_photo"
+            key="profile_photo",
         )
+        st.caption("Profile photos are limited to 5 MB and resized to 512 px.")
 
         if st.button(
             "💾 Save Profile"
         ):
+
+            try:
+                profile_name, profile_email, profile_phone = (
+                    validate_profile_fields(
+                        profile_name,
+                        profile_email,
+                        profile_phone,
+                    )
+                )
+                profile_photo = (
+                    normalize_profile_photo(
+                        uploaded_profile_photo.getvalue()
+                    )
+                    if uploaded_profile_photo
+                    else None
+                )
+            except ValueError as exc:
+                st.error(str(exc))
+                st.stop()
 
             st.session_state.profile[
                 "name"
@@ -1109,11 +1137,11 @@ with st.sidebar:
                 "phone"
             ] = profile_phone
 
-            if uploaded_profile_photo:
+            if profile_photo:
 
                 st.session_state.profile[
                     "photo"
-                ] = uploaded_profile_photo.getvalue()
+                ] = profile_photo
 
             st.success(
                 "Profile updated!"

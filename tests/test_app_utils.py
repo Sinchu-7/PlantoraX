@@ -9,12 +9,15 @@ from PIL import Image
 from plant_app_utils import (
     create_history_record,
     decode_image_bytes,
+    escape_html_text,
     escape_pdf_text,
     deduplicate_history_records,
     get_model_image_size,
+    normalize_profile_photo,
     sanitize_spreadsheet_dataframe,
     sanitize_spreadsheet_value,
     validate_model_class_count,
+    validate_profile_fields,
 )
 
 
@@ -175,6 +178,44 @@ class SpreadsheetSafetyTests(unittest.TestCase):
         self.assertEqual(result.loc[0, "Image"], "'=HYPERLINK(\"https://example.com\")")
         self.assertEqual(result.loc[0, "Confidence"], 95.5)
         self.assertEqual(source.loc[0, "Image"], '=HYPERLINK("https://example.com")')
+
+
+class ProfileSafetyTests(unittest.TestCase):
+    def test_escapes_profile_html(self):
+        self.assertEqual(
+            escape_html_text('<img src=x onerror="alert(1)">'),
+            "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;",
+        )
+
+    def test_normalizes_and_downscales_valid_profile_photo(self):
+        photo = normalize_profile_photo(
+            DecodeImageBytesTests().make_image(size=(600, 300))
+        )
+        with Image.open(BytesIO(photo)) as image:
+            self.assertEqual(image.format, "JPEG")
+            self.assertEqual(image.size, (512, 256))
+
+    def test_rejects_oversized_profile_photo(self):
+        with self.assertRaisesRegex(ValueError, "too large"):
+            normalize_profile_photo(b"x" * (5 * 1024 * 1024 + 1))
+
+    def test_validates_and_normalizes_profile_fields(self):
+        self.assertEqual(
+            validate_profile_fields("  Green Thumb  ", "user@example.com", "+1 (555) 010-1234"),
+            ("Green Thumb", "user@example.com", "+1 (555) 010-1234"),
+        )
+
+    def test_rejects_invalid_profile_fields(self):
+        invalid_profiles = [
+            ("", "user@example.com", ""),
+            ("a" * 81, "", ""),
+            ("Name", "not-an-email", ""),
+            ("Name", "", "555-0101<script>"),
+        ]
+        for profile in invalid_profiles:
+            with self.subTest(profile=profile):
+                with self.assertRaises(ValueError):
+                    validate_profile_fields(*profile)
 
 
 if __name__ == "__main__":
