@@ -6,6 +6,7 @@ import math
 from uuid import uuid4
 from xml.sax.saxutils import escape
 
+import pandas as pd
 from PIL import Image, UnidentifiedImageError
 
 
@@ -65,6 +66,29 @@ def deduplicate_history_records(records):
 
 def escape_pdf_text(value):
     return escape(str(value))
+
+
+def sanitize_spreadsheet_value(value):
+    if not isinstance(value, str):
+        return value
+
+    formula_candidate = value.lstrip(" \t\r\n\ufeff")
+    if formula_candidate.startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
+def sanitize_spreadsheet_dataframe(dataframe):
+    safe_dataframe = dataframe.copy()
+    for column in safe_dataframe.columns:
+        if (
+            pd.api.types.is_object_dtype(safe_dataframe[column].dtype)
+            or pd.api.types.is_string_dtype(safe_dataframe[column].dtype)
+        ):
+            safe_dataframe[column] = safe_dataframe[column].map(
+                sanitize_spreadsheet_value
+            )
+    return safe_dataframe
 
 
 def _single_shape(shape, name):

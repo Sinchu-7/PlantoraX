@@ -16,6 +16,7 @@ from plant_app_utils import (
     decode_image_bytes,
     escape_pdf_text,
     get_model_image_size,
+    sanitize_spreadsheet_dataframe,
     validate_model_class_count,
 )
 
@@ -1851,7 +1852,8 @@ elif page == "📊 Prediction History":
             # CSV
             # =================================================
 
-            csv_data = user_history.to_csv(
+            export_history = sanitize_spreadsheet_dataframe(user_history)
+            csv_data = export_history.to_csv(
                 index=False
             ).encode(
                 "utf-8"
@@ -1862,7 +1864,7 @@ elif page == "📊 Prediction History":
             # =================================================
 
             excel_buffer = create_excel(
-                user_history
+                export_history
             )
 
             # =================================================

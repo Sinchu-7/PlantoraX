@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 from types import SimpleNamespace
 
+import pandas as pd
 from PIL import Image
 
 from plant_app_utils import (
@@ -11,6 +12,8 @@ from plant_app_utils import (
     escape_pdf_text,
     deduplicate_history_records,
     get_model_image_size,
+    sanitize_spreadsheet_dataframe,
+    sanitize_spreadsheet_value,
     validate_model_class_count,
 )
 
@@ -150,6 +153,28 @@ class PdfTextTests(unittest.TestCase):
 
     def test_converts_non_string_cell_values(self):
         self.assertEqual(escape_pdf_text(95.5), "95.5")
+
+
+class SpreadsheetSafetyTests(unittest.TestCase):
+    def test_prefixes_formula_candidates_after_leading_whitespace(self):
+        for value in ("=1+1", " +SUM(A1:A2)", "\t@SUM(1,2)", "\ufeff-1+2"):
+            with self.subTest(value=value):
+                self.assertEqual(sanitize_spreadsheet_value(value), "'" + value)
+
+    def test_leaves_non_formula_text_and_numeric_values_unchanged(self):
+        self.assertEqual(sanitize_spreadsheet_value("leaf.jpg"), "leaf.jpg")
+        self.assertEqual(sanitize_spreadsheet_value(-1), -1)
+
+    def test_sanitizes_string_cells_without_mutating_source(self):
+        source = pd.DataFrame(
+            {"Image": ["=HYPERLINK(\"https://example.com\")"], "Confidence": [95.5]}
+        )
+
+        result = sanitize_spreadsheet_dataframe(source)
+
+        self.assertEqual(result.loc[0, "Image"], "'=HYPERLINK(\"https://example.com\")")
+        self.assertEqual(result.loc[0, "Confidence"], 95.5)
+        self.assertEqual(source.loc[0, "Image"], '=HYPERLINK("https://example.com")')
 
 
 if __name__ == "__main__":
